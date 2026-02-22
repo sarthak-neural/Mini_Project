@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Restaurant Inventory Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <script src="{{ url_for('static', filename='theme.js') }}"></script>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <div class="nav-brand">
+        <i class="fas fa-utensils"></i>
+        <span>Restaurant Inventory AI</span>
+      </div>
+      <div class="nav-links">
+        <a href="/dashboard" class="active"><i class="fas fa-home"></i> Dashboard</a>
+        <a href="/forecast"><i class="fas fa-chart-line"></i> Forecast</a>
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark mode">        <i class="fas fa-moon"></i>
+        </button>
+        <div class="user-menu">
+          <div class="user-info">
+            <div class="user-avatar">
+              <i class="fas fa-user"></i>
+            </div>
+            <div class="user-details">
+              <span class="user-name">{{ user }}</span>
+              <span class="user-restaurant">{{ restaurant }}</span>
+            </div>
+          </div>
+          <div class="user-dropdown">
+            <a href="#"><i class="fas fa-user-cog"></i> Settings</a>
+            <a href="#"><i class="fas fa-bell"></i> Notifications</a>
+            <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <header class="page-header">
+      <div>
+        <h1><i class="fas fa-chart-pie"></i> Inventory Dashboard</h1>
+        <p>Real-time insights into your restaurant inventory</p>
+        <div id="location-info" style="margin-top: 1rem;"></div>
+        <div id="units-info" class="units-display" style="margin-top: 0.5rem;"></div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-secondary" onclick="showAddSaleModal()">
+          <i class="fas fa-plus"></i> Add Sale
+        </button>
+        <button class="btn btn-primary" onclick="window.location.href='/forecast'">
+          <i class="fas fa-chart-line"></i> New Forecast
+        </button>
+      </div>
+    </header>
+
+    <div id="loading" class="loading">
+      <i class="fas fa-spinner fa-spin"></i> Loading dashboard...
+    </div>
+
+    <div id="dashboard-content" style="display: none;">
+      <!-- Stats Cards -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon" style="background: #4CAF50;">
+            <i class="fas fa-boxes"></i>
+          </div>
+          <div class="stat-info">
+            <p class="stat-label">Total Ingredients</p>
+            <h2 class="stat-value" id="total-ingredients">0</h2>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon" style="background: #2196F3;">
+            <i class="fas fa-chart-line"></i>
+          </div>
+          <div class="stat-info">
+            <p class="stat-label">Total Sales</p>
+            <h2 class="stat-value" id="total-sales">0</h2>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon" style="background: #FF9800;">
+            <i class="fas fa-calendar-day"></i>
+          </div>
+          <div class="stat-info">
+            <p class="stat-label">Avg Daily Sales</p>
+            <h2 class="stat-value" id="avg-daily-sales">0</h2>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon" style="background: #9C27B0;">
+            <i class="fas fa-clock"></i>
+          </div>
+          <div class="stat-info">
+            <p class="stat-label">Date Range</p>
+            <p class="stat-value small" id="date-range">-</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts Section -->
+      <div class="charts-grid">
+        <div class="card">
+          <div class="card-header">
+            <h2><i class="fas fa-chart-area"></i> Sales Trend (Last 7 Days)</h2>
+          </div>
+          <div class="card-body">
+            <canvas id="trendChart" height="100"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2><i class="fas fa-chart-bar"></i> Top Ingredients</h2>
+          </div>
+          <div class="card-body">
+            <canvas id="topIngredientsChart" height="100"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="card">
+        <div class="card-header">
+          <h2><i class="fas fa-bolt"></i> Quick Actions</h2>
+        </div>
+        <div class="card-body">
+          <div class="action-buttons">
+            <button class="btn btn-primary" onclick="window.location.href='/forecast'">
+              <i class="fas fa-chart-line"></i> Generate Forecast
+            </button>
+            <button class="btn btn-secondary" onclick="showAddSaleModal()">
+              <i class="fas fa-plus"></i> Add Sale Record
+            </button>
+            <button class="btn btn-secondary" onclick="refreshDashboard()">
+              <i class="fas fa-sync-alt"></i> Refresh Data
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Sale Modal -->
+  <div id="addSaleModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Add Sale Record</h2>
+        <span class="close" onclick="closeAddSaleModal()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <form id="addSaleForm">
+          <div class="form-group">
+            <label for="sale-ingredient">Ingredient</label>
+            <select id="sale-ingredient" required>
+              <option value="">Select ingredient...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="sale-date">Date</label>
+            <input type="date" id="sale-date" required />
+          </div>
+
+          <div class="form-group">
+            <label for="sale-quantity">Quantity Sold</label>
+            <input type="number" id="sale-quantity" step="0.1" min="0" required />
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeAddSaleModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Add Sale</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="{{ url_for('static', filename='location.js') }}"></script>
+  <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+  <script>
+    // Display user location and units on dashboard load
+    document.addEventListener('DOMContentLoaded', function() {
+      locationService.getUserLocation().then(data => {
+        if (data.location && data.location.country) {
+          const locationInfo = document.getElementById('location-info');
+          locationInfo.innerHTML = `<div class="location-display"><i class="fas fa-map-marker-alt"></i> Location: ${data.location.country}</div>`;
+        }
+        
+        // Display units info
+        if (data.units) {
+          const unitsInfo = document.getElementById('units-info');
+          unitsInfo.innerHTML = `
+            <div class="unit-info"><strong>Weight Unit:</strong> ${data.units.weight}</div>
+            <div class="unit-info"><strong>Volume Unit:</strong> ${data.units.volume}</div>
+            <div class="unit-info"><strong>Currency:</strong> ${data.units.currency}</div>
+          `;
+        }
+      }).catch(error => {
+        console.log('Location not set, using defaults');
+      });
+    });
+  </script>
+</body>
+</html>

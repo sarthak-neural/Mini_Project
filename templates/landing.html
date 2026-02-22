@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Restaurant Inventory AI - Smart Inventory Management</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <script src="{{ url_for('static', filename='theme.js') }}"></script>
+</head>
+<body class="landing-page">
+  <!-- Hero Section -->
+  <section class="hero">
+    <nav class="landing-nav">
+      <div class="nav-brand">
+        <i class="fas fa-utensils"></i>
+        <span>Restaurant Inventory AI</span>
+      </div>
+      <div class="nav-actions">
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark mode">
+          <i class="fas fa-moon"></i>
+        </button>
+        <a href="/login{% if simple_session %}?simple=1{% endif %}" class="btn-link">Sign In</a>
+        <a href="/signup{% if simple_session %}?simple=1{% endif %}" class="btn btn-primary-outline">Sign Up</a>
+          <a href="/guest-login{% if simple_session %}?simple=1{% endif %}" class="btn btn-secondary-outline">Guest</a>
+      </div>
+    </nav>
+
+    <div class="hero-content">
+      <div class="hero-text">
+        <h1 class="hero-title">
+          Smart Inventory Management<br>
+          <span class="gradient-text">Powered by AI</span>
+        </h1>
+        <p class="hero-subtitle">
+          Optimize your restaurant inventory with AI-driven demand forecasting,
+          reduce waste, and never run out of essential ingredients.
+        </p>
+        <div class="hero-buttons">
+          <a href="#features" class="btn btn-secondary-outline btn-large">
+            <i class="fas fa-play-circle"></i> Learn More
+          </a>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <i class="fas fa-clock"></i>
+            <span>Setup in 5 Minutes</span>
+          </div>
+          <div class="hero-stat">
+            <i class="fas fa-shield-alt"></i>
+            <span>Enterprise Security</span>
+          </div>
+        </div>
+      </div>
+      <div class="hero-image">
+        <div class="dashboard-preview">
+          <div class="preview-header">
+            <div class="preview-dots">
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+          <div class="preview-content">
+            <div class="preview-stats">
+              <div class="preview-stat">
+                <i class="fas fa-chart-line"></i>
+                <div>
+                  <small>Total Sales</small>
+                  <strong><span class="currency-symbol">$</span><span class="counter" data-target="45892">0</span></strong>
+                </div>
+              </div>
+              <div class="preview-stat">
+                <i class="fas fa-boxes"></i>
+                <div>
+                  <small>Ingredients</small>
+                  <strong><span class="counter" data-target="127">0</span></strong>
+                </div>
+              </div>
+            </div>
+            <div class="preview-chart">
+              <div class="chart-title">Weekly Sales Forecast</div>
+              <div class="chart-bars">
+                <div class="bar-container">
+                  <div class="bar" style="height: 60%"></div>
+                  <span class="bar-value"><span class="currency-symbol">$</span><span class="counter" data-target="2460">0</span></span>
+                  <span class="bar-label">Mon</span>
+                </div>
+                <div class="bar-container">
+                  <div class="bar" style="height: 80%"></div>
+                  <span class="bar-value"><span class="currency-symbol">$</span><span class="counter" data-target="3280">0</span></span>
+                  <span class="bar-label">Tue</span>
+                </div>
+                <div class="bar-container">
+                  <div class="bar" style="height: 70%"></div>
+                  <span class="bar-value"><span class="currency-symbol">$</span><span class="counter" data-target="2870">0</span></span>
+                  <span class="bar-label">Wed</span>
+                </div>
+                <div class="bar-container">
+                  <div class="bar" style="height: 90%"></div>
+                  <span class="bar-value"><span class="currency-symbol">$</span><span class="counter" data-target="3690">0</span></span>
+                  <span class="bar-label">Thu</span>
+                </div>
+                <div class="bar-container">
+                  <div class="bar" style="height: 75%"></div>
+                  <span class="bar-value"><span class="currency-symbol">$</span><span class="counter" data-target="3075">0</span></span>
+                  <span class="bar-label">Fri</span>
+                </div>
+                <div class="bar-container">
+                  <div class="bar" style="height: 95%"></div>
+                  <span class="bar-value"><span class="currency-symbol">$</span><span class="counter" data-target="3895">0</span></span>
+                  <span class="bar-label">Sat</span>
+                </div>
+                <div class="bar-container">
+                  <div class="bar" style="height: 85%"></div>
+                  <span class="bar-value"><span class="currency-symbol">$</span><span class="counter" data-target="3485">0</span></span>
+                  <span class="bar-label">Sun</span>
+                </div>
+              </div>
+              <div class="chart-legend">Weekly revenue with AI demand forecast</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section id="features" class="features-section">
+    <div class="container">
+      <div class="section-header">
+        <h2>Powerful Features for Your Restaurant</h2>
+        <p>Everything you need to manage inventory efficiently</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <i class="fas fa-brain"></i>
+          </div>
+          <h3>AI-Powered Forecasting</h3>
+          <p>Predict demand accurately with machine learning algorithms that analyze historical data and trends.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <i class="fas fa-chart-bar"></i>
+          </div>
+          <h3>Real-time Analytics</h3>
+          <p>Get instant insights with interactive dashboards and beautiful visualizations of your inventory data.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <i class="fas fa-bell"></i>
+          </div>
+          <h3>Smart Alerts</h3>
+          <p>Receive notifications when stock levels are low or when it's time to reorder essential ingredients.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+            <i class="fas fa-cogs"></i>
+          </div>
+          <h3>Inventory Optimization</h3>
+          <p>Minimize waste and maximize efficiency with intelligent reorder point calculations and safety stock levels.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+            <i class="fas fa-mobile-alt"></i>
+          </div>
+          <h3>Mobile Responsive</h3>
+          <p>Access your inventory dashboard from any device - desktop, tablet, or smartphone.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);">
+            <i class="fas fa-lock"></i>
+          </div>
+          <h3>Secure & Reliable</h3>
+          <p>Your data is protected with enterprise-grade security and regular automated backups.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Benefits Section -->
+  <section class="benefits-section">
+    <div class="container">
+      <div class="benefits-content">
+        <div class="benefits-text">
+          <h2>Why Choose Restaurant Inventory AI?</h2>
+          <div class="benefit-list">
+            <div class="benefit-item">
+              <i class="fas fa-check-circle"></i>
+              <div>
+                <h4>Reduce Food Waste by 30%</h4>
+                <p>Accurate forecasting means ordering exactly what you need</p>
+              </div>
+            </div>
+            <div class="benefit-item">
+              <i class="fas fa-check-circle"></i>
+              <div>
+                <h4>Save 10+ Hours Weekly</h4>
+                <p>Automate inventory management and focus on your customers</p>
+              </div>
+            </div>
+            <div class="benefit-item">
+              <i class="fas fa-check-circle"></i>
+              <div>
+                <h4>Increase Profit Margins</h4>
+                <p>Optimize stock levels and reduce over-ordering costs</p>
+              </div>
+            </div>
+            <div class="benefit-item">
+              <i class="fas fa-check-circle"></i>
+              <div>
+                <h4>Never Run Out</h4>
+                <p>Smart alerts ensure you always have ingredients in stock</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="benefits-image">
+          <div class="stats-showcase">
+            <div class="showcase-card">
+              <i class="fas fa-arrow-up"></i>
+              <h3><span class="counter" data-target="40">0</span>%</h3>
+              <p>Efficiency Increase</p>
+            </div>
+            <div class="showcase-card">
+              <span class="currency-symbol currency-icon">$</span>
+              <h3><span class="currency-symbol">$</span><span class="counter" data-target="15000">0</span></h3>
+              <p>Average Annual Savings</p>
+            </div>
+            <div class="showcase-card">
+              <i class="fas fa-smile"></i>
+              <h3><span class="counter" data-target="98">0</span>%</h3>
+              <p>Customer Satisfaction</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="cta-section">
+    <div class="container">
+      <div class="cta-content">
+        <h2>Ready to Transform Your Inventory Management?</h2>
+        <p>Join hundreds of restaurants already using AI to optimize their operations</p>
+        <div class="cta-buttons">
+          <a href="#features" class="btn btn-secondary-outline btn-large">
+            <i class="fas fa-phone"></i> Contact Sales
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="landing-footer">
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-brand">
+          <div class="nav-brand">
+            <i class="fas fa-utensils"></i>
+            <span>Restaurant Inventory AI</span>
+          </div>
+          <p>Smart inventory management powered by artificial intelligence</p>
+        </div>
+        <div class="footer-links">
+          <div class="footer-column">
+            <h4>Product</h4>
+            <a href="#features">Features</a>
+            <a href="#pricing">Pricing</a>
+            <a href="/login">Login</a>
+          </div>
+          <div class="footer-column">
+            <h4>Company</h4>
+            <a href="#about">About</a>
+            <a href="#contact">Contact</a>
+            <a href="#careers">Careers</a>
+          </div>
+          <div class="footer-column">
+            <h4>Support</h4>
+            <a href="#help">Help Center</a>
+            <a href="#docs">Documentation</a>
+            <a href="#api">API</a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 Restaurant Inventory AI. All rights reserved.</p>
+        <div class="footer-social">
+          <a href="#"><i class="fab fa-twitter"></i></a>
+          <a href="#"><i class="fab fa-facebook"></i></a>
+          <a href="#"><i class="fab fa-linkedin"></i></a>
+          <a href="#"><i class="fab fa-instagram"></i></a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='location.js') }}"></script>
+  <script src="{{ url_for('static', filename='landing.js') }}"></script>
+</body>
+</html>

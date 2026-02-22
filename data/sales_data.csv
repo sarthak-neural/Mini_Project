@@ -1,0 +1,413 @@
+date,ingredient,quantity_sold
+2026-01-01,Tomato,35.0
+2026-01-02,Tomato,38.0
+2026-01-03,Tomato,40.0
+2026-01-04,Tomato,42.0
+2026-01-05,Tomato,38.0
+2026-01-06,Tomato,45.0
+2026-01-07,Tomato,50.0
+2026-01-08,Tomato,48.0
+2026-01-09,Tomato,52.0
+2026-01-10,Tomato,55.0
+2026-01-01,Onion,28.0
+2026-01-02,Onion,30.0
+2026-01-03,Onion,32.0
+2026-01-04,Onion,35.0
+2026-01-05,Onion,33.0
+2026-01-06,Onion,38.0
+2026-01-07,Onion,40.0
+2026-01-08,Onion,42.0
+2026-01-09,Onion,45.0
+2026-01-10,Onion,48.0
+2026-01-01,Garlic,15.0
+2026-01-02,Garlic,16.0
+2026-01-03,Garlic,17.0
+2026-01-04,Garlic,18.0
+2026-01-05,Garlic,17.0
+2026-01-06,Garlic,20.0
+2026-01-07,Garlic,22.0
+2026-01-08,Garlic,21.0
+2026-01-09,Garlic,23.0
+2026-01-10,Garlic,25.0
+2026-01-01,Bell Pepper,22.0
+2026-01-02,Bell Pepper,24.0
+2026-01-03,Bell Pepper,26.0
+2026-01-04,Bell Pepper,28.0
+2026-01-05,Bell Pepper,25.0
+2026-01-06,Bell Pepper,30.0
+2026-01-07,Bell Pepper,32.0
+2026-01-08,Bell Pepper,31.0
+2026-01-09,Bell Pepper,33.0
+2026-01-10,Bell Pepper,35.0
+2026-01-01,Lettuce,18.0
+2026-01-02,Lettuce,20.0
+2026-01-03,Lettuce,22.0
+2026-01-04,Lettuce,24.0
+2026-01-05,Lettuce,21.0
+2026-01-06,Lettuce,26.0
+2026-01-07,Lettuce,28.0
+2026-01-08,Lettuce,27.0
+2026-01-09,Lettuce,29.0
+2026-01-10,Lettuce,31.0
+2026-01-01,Spinach,14.0
+2026-01-02,Spinach,15.0
+2026-01-03,Spinach,16.0
+2026-01-04,Spinach,18.0
+2026-01-05,Spinach,16.0
+2026-01-06,Spinach,20.0
+2026-01-07,Spinach,22.0
+2026-01-08,Spinach,21.0
+2026-01-09,Spinach,23.0
+2026-01-10,Spinach,25.0
+2026-01-01,Chicken Breast,40.0
+2026-01-02,Chicken Breast,42.0
+2026-01-03,Chicken Breast,45.0
+2026-01-04,Chicken Breast,48.0
+2026-01-05,Chicken Breast,46.0
+2026-01-06,Chicken Breast,50.0
+2026-01-07,Chicken Breast,55.0
+2026-01-08,Chicken Breast,52.0
+2026-01-09,Chicken Breast,58.0
+2026-01-10,Chicken Breast,62.0
+2026-01-01,Ground Beef,35.0
+2026-01-02,Ground Beef,37.0
+2026-01-03,Ground Beef,40.0
+2026-01-04,Ground Beef,42.0
+2026-01-05,Ground Beef,39.0
+2026-01-06,Ground Beef,45.0
+2026-01-07,Ground Beef,48.0
+2026-01-08,Ground Beef,46.0
+2026-01-09,Ground Beef,50.0
+2026-01-10,Ground Beef,54.0
+2026-01-01,Salmon,22.0
+2026-01-02,Salmon,24.0
+2026-01-03,Salmon,26.0
+2026-01-04,Salmon,28.0
+2026-01-05,Salmon,25.0
+2026-01-06,Salmon,30.0
+2026-01-07,Salmon,32.0
+2026-01-08,Salmon,31.0
+2026-01-09,Salmon,34.0
+2026-01-10,Salmon,38.0
+2026-01-01,Shrimp,18.0
+2026-01-02,Shrimp,20.0
+2026-01-03,Shrimp,22.0
+2026-01-04,Shrimp,24.0
+2026-01-05,Shrimp,21.0
+2026-01-06,Shrimp,26.0
+2026-01-07,Shrimp,28.0
+2026-01-08,Shrimp,27.0
+2026-01-09,Shrimp,30.0
+2026-01-10,Shrimp,32.0
+2026-01-01,Mozzarella Cheese,25.0
+2026-01-02,Mozzarella Cheese,27.0
+2026-01-03,Mozzarella Cheese,30.0
+2026-01-04,Mozzarella Cheese,32.0
+2026-01-05,Mozzarella Cheese,29.0
+2026-01-06,Mozzarella Cheese,35.0
+2026-01-07,Mozzarella Cheese,38.0
+2026-01-08,Mozzarella Cheese,36.0
+2026-01-09,Mozzarella Cheese,40.0
+2026-01-10,Mozzarella Cheese,44.0
+2026-01-01,Parmesan Cheese,18.0
+2026-01-02,Parmesan Cheese,20.0
+2026-01-03,Parmesan Cheese,22.0
+2026-01-04,Parmesan Cheese,24.0
+2026-01-05,Parmesan Cheese,21.0
+2026-01-06,Parmesan Cheese,26.0
+2026-01-07,Parmesan Cheese,28.0
+2026-01-08,Parmesan Cheese,27.0
+2026-01-09,Parmesan Cheese,30.0
+2026-01-10,Parmesan Cheese,32.0
+2026-01-01,Milk,50.0
+2026-01-02,Milk,52.0
+2026-01-03,Milk,55.0
+2026-01-04,Milk,58.0
+2026-01-05,Milk,54.0
+2026-01-06,Milk,60.0
+2026-01-07,Milk,65.0
+2026-01-08,Milk,62.0
+2026-01-09,Milk,68.0
+2026-01-10,Milk,72.0
+2026-01-01,Butter,28.0
+2026-01-02,Butter,30.0
+2026-01-03,Butter,32.0
+2026-01-04,Butter,35.0
+2026-01-05,Butter,33.0
+2026-01-06,Butter,38.0
+2026-01-07,Butter,40.0
+2026-01-08,Butter,39.0
+2026-01-09,Butter,42.0
+2026-01-10,Butter,45.0
+2026-01-01,Heavy Cream,18.0
+2026-01-02,Heavy Cream,20.0
+2026-01-03,Heavy Cream,22.0
+2026-01-04,Heavy Cream,24.0
+2026-01-05,Heavy Cream,21.0
+2026-01-06,Heavy Cream,26.0
+2026-01-07,Heavy Cream,28.0
+2026-01-08,Heavy Cream,27.0
+2026-01-09,Heavy Cream,30.0
+2026-01-10,Heavy Cream,32.0
+2026-01-01,Flour,60.0
+2026-01-02,Flour,62.0
+2026-01-03,Flour,65.0
+2026-01-04,Flour,68.0
+2026-01-05,Flour,64.0
+2026-01-06,Flour,70.0
+2026-01-07,Flour,75.0
+2026-01-08,Flour,72.0
+2026-01-09,Flour,78.0
+2026-01-10,Flour,82.0
+2026-01-01,Rice,45.0
+2026-01-02,Rice,47.0
+2026-01-03,Rice,50.0
+2026-01-04,Rice,52.0
+2026-01-05,Rice,49.0
+2026-01-06,Rice,55.0
+2026-01-07,Rice,58.0
+2026-01-08,Rice,56.0
+2026-01-09,Rice,60.0
+2026-01-10,Rice,64.0
+2026-01-01,Pasta,40.0
+2026-01-02,Pasta,42.0
+2026-01-03,Pasta,45.0
+2026-01-04,Pasta,48.0
+2026-01-05,Pasta,46.0
+2026-01-06,Pasta,50.0
+2026-01-07,Pasta,55.0
+2026-01-08,Pasta,52.0
+2026-01-09,Pasta,58.0
+2026-01-10,Pasta,62.0
+2026-01-01,Bread,35.0
+2026-01-02,Bread,37.0
+2026-01-03,Bread,40.0
+2026-01-04,Bread,42.0
+2026-01-05,Bread,39.0
+2026-01-06,Bread,45.0
+2026-01-07,Bread,48.0
+2026-01-08,Bread,46.0
+2026-01-09,Bread,50.0
+2026-01-10,Bread,54.0
+2026-01-01,Dough,32.0
+2026-01-02,Dough,34.0
+2026-01-03,Dough,37.0
+2026-01-04,Dough,40.0
+2026-01-05,Dough,37.0
+2026-01-06,Dough,42.0
+2026-01-07,Dough,45.0
+2026-01-08,Dough,43.0
+2026-01-09,Dough,48.0
+2026-01-10,Dough,52.0
+2026-01-01,Olive Oil,25.0
+2026-01-02,Olive Oil,27.0
+2026-01-03,Olive Oil,30.0
+2026-01-04,Olive Oil,32.0
+2026-01-05,Olive Oil,29.0
+2026-01-06,Olive Oil,35.0
+2026-01-07,Olive Oil,38.0
+2026-01-08,Olive Oil,36.0
+2026-01-09,Olive Oil,40.0
+2026-01-10,Olive Oil,44.0
+2026-01-01,Vegetable Oil,30.0
+2026-01-02,Vegetable Oil,32.0
+2026-01-03,Vegetable Oil,35.0
+2026-01-04,Vegetable Oil,38.0
+2026-01-05,Vegetable Oil,35.0
+2026-01-06,Vegetable Oil,40.0
+2026-01-07,Vegetable Oil,43.0
+2026-01-08,Vegetable Oil,41.0
+2026-01-09,Vegetable Oil,45.0
+2026-01-10,Vegetable Oil,49.0
+2026-01-01,Salt,15.0
+2026-01-02,Salt,15.0
+2026-01-03,Salt,16.0
+2026-01-04,Salt,17.0
+2026-01-05,Salt,16.0
+2026-01-06,Salt,18.0
+2026-01-07,Salt,19.0
+2026-01-08,Salt,18.0
+2026-01-09,Salt,20.0
+2026-01-10,Salt,21.0
+2026-01-01,Black Pepper,12.0
+2026-01-02,Black Pepper,12.0
+2026-01-03,Black Pepper,13.0
+2026-01-04,Black Pepper,14.0
+2026-01-05,Black Pepper,13.0
+2026-01-06,Black Pepper,15.0
+2026-01-07,Black Pepper,16.0
+2026-01-08,Black Pepper,15.0
+2026-01-09,Black Pepper,17.0
+2026-01-10,Black Pepper,18.0
+2026-01-01,Italian Herbs,10.0
+2026-01-02,Italian Herbs,10.0
+2026-01-03,Italian Herbs,11.0
+2026-01-04,Italian Herbs,12.0
+2026-01-05,Italian Herbs,11.0
+2026-01-06,Italian Herbs,13.0
+2026-01-07,Italian Herbs,14.0
+2026-01-08,Italian Herbs,13.0
+2026-01-09,Italian Herbs,15.0
+2026-01-10,Italian Herbs,16.0
+2026-01-01,Paprika,8.0
+2026-01-02,Paprika,8.0
+2026-01-03,Paprika,9.0
+2026-01-04,Paprika,10.0
+2026-01-05,Paprika,9.0
+2026-01-06,Paprika,11.0
+2026-01-07,Paprika,12.0
+2026-01-08,Paprika,11.0
+2026-01-09,Paprika,13.0
+2026-01-10,Paprika,14.0
+2026-01-01,Cumin,8.0
+2026-01-02,Cumin,8.0
+2026-01-03,Cumin,9.0
+2026-01-04,Cumin,10.0
+2026-01-05,Cumin,9.0
+2026-01-06,Cumin,11.0
+2026-01-07,Cumin,12.0
+2026-01-08,Cumin,11.0
+2026-01-09,Cumin,13.0
+2026-01-10,Cumin,14.0
+2026-01-01,Tomato Sauce,20.0
+2026-01-02,Tomato Sauce,22.0
+2026-01-03,Tomato Sauce,24.0
+2026-01-04,Tomato Sauce,26.0
+2026-01-05,Tomato Sauce,23.0
+2026-01-06,Tomato Sauce,28.0
+2026-01-07,Tomato Sauce,30.0
+2026-01-08,Tomato Sauce,29.0
+2026-01-09,Tomato Sauce,32.0
+2026-01-10,Tomato Sauce,35.0
+2026-01-01,Soy Sauce,15.0
+2026-01-02,Soy Sauce,16.0
+2026-01-03,Soy Sauce,17.0
+2026-01-04,Soy Sauce,18.0
+2026-01-05,Soy Sauce,17.0
+2026-01-06,Soy Sauce,20.0
+2026-01-07,Soy Sauce,21.0
+2026-01-08,Soy Sauce,20.0
+2026-01-09,Soy Sauce,22.0
+2026-01-10,Soy Sauce,24.0
+2026-01-01,Vinegar,10.0
+2026-01-02,Vinegar,11.0
+2026-01-03,Vinegar,12.0
+2026-01-04,Vinegar,13.0
+2026-01-05,Vinegar,12.0
+2026-01-06,Vinegar,14.0
+2026-01-07,Vinegar,15.0
+2026-01-08,Vinegar,14.0
+2026-01-09,Vinegar,16.0
+2026-01-10,Vinegar,17.0
+2026-01-01,Eggs,55.0
+2026-01-02,Eggs,58.0
+2026-01-03,Eggs,62.0
+2026-01-04,Eggs,65.0
+2026-01-05,Eggs,61.0
+2026-01-06,Eggs,68.0
+2026-01-07,Eggs,72.0
+2026-01-08,Eggs,70.0
+2026-01-09,Eggs,75.0
+2026-01-10,Eggs,80.0
+2026-01-01,Potatoes,40.0
+2026-01-02,Potatoes,42.0
+2026-01-03,Potatoes,45.0
+2026-01-04,Potatoes,48.0
+2026-01-05,Potatoes,46.0
+2026-01-06,Potatoes,50.0
+2026-01-07,Potatoes,55.0
+2026-01-08,Potatoes,52.0
+2026-01-09,Potatoes,58.0
+2026-01-10,Potatoes,62.0
+2026-01-01,Garlic Powder,5.0
+2026-01-02,Garlic Powder,5.0
+2026-01-03,Garlic Powder,6.0
+2026-01-04,Garlic Powder,6.0
+2026-01-05,Garlic Powder,6.0
+2026-01-06,Garlic Powder,7.0
+2026-01-07,Garlic Powder,7.0
+2026-01-08,Garlic Powder,7.0
+2026-01-09,Garlic Powder,8.0
+2026-01-10,Garlic Powder,8.0
+2026-01-01,Sugar,20.0
+2026-01-02,Sugar,21.0
+2026-01-03,Sugar,22.0
+2026-01-04,Sugar,23.0
+2026-01-05,Sugar,22.0
+2026-01-06,Sugar,25.0
+2026-01-07,Sugar,26.0
+2026-01-08,Sugar,25.0
+2026-01-09,Sugar,28.0
+2026-01-10,Sugar,30.0
+2026-01-01,Baking Powder,8.0
+2026-01-02,Baking Powder,8.0
+2026-01-03,Baking Powder,9.0
+2026-01-04,Baking Powder,10.0
+2026-01-05,Baking Powder,9.0
+2026-01-06,Baking Powder,11.0
+2026-01-07,Baking Powder,12.0
+2026-01-08,Baking Powder,11.0
+2026-01-09,Baking Powder,13.0
+2026-01-10,Baking Powder,14.0
+2026-01-01,Baking Soda,6.0
+2026-01-02,Baking Soda,6.0
+2026-01-03,Baking Soda,7.0
+2026-01-04,Baking Soda,7.0
+2026-01-05,Baking Soda,7.0
+2026-01-06,Baking Soda,8.0
+2026-01-07,Baking Soda,8.0
+2026-01-08,Baking Soda,8.0
+2026-01-09,Baking Soda,9.0
+2026-01-10,Baking Soda,9.0
+2026-01-01,Honey,12.0
+2026-01-02,Honey,13.0
+2026-01-03,Honey,14.0
+2026-01-04,Honey,15.0
+2026-01-05,Honey,14.0
+2026-01-06,Honey,16.0
+2026-01-07,Honey,17.0
+2026-01-08,Honey,16.0
+2026-01-09,Honey,18.0
+2026-01-10,Honey,20.0
+2026-01-01,Mushrooms,16.0
+2026-01-02,Mushrooms,18.0
+2026-01-03,Mushrooms,20.0
+2026-01-04,Mushrooms,22.0
+2026-01-05,Mushrooms,19.0
+2026-01-06,Mushrooms,24.0
+2026-01-07,Mushrooms,26.0
+2026-01-08,Mushrooms,25.0
+2026-01-09,Mushrooms,28.0
+2026-01-10,Mushrooms,30.0
+2026-01-01,Broccoli,14.0
+2026-01-02,Broccoli,15.0
+2026-01-03,Broccoli,16.0
+2026-01-04,Broccoli,18.0
+2026-01-05,Broccoli,16.0
+2026-01-06,Broccoli,20.0
+2026-01-07,Broccoli,22.0
+2026-01-08,Broccoli,21.0
+2026-01-09,Broccoli,23.0
+2026-01-10,Broccoli,25.0
+2026-01-01,Carrots,18.0
+2026-01-02,Carrots,20.0
+2026-01-03,Carrots,22.0
+2026-01-04,Carrots,24.0
+2026-01-05,Carrots,21.0
+2026-01-06,Carrots,26.0
+2026-01-07,Carrots,28.0
+2026-01-08,Carrots,27.0
+2026-01-09,Carrots,30.0
+2026-01-10,Carrots,32.0
+2026-01-01,Chicken Stock,30.0
+2026-01-02,Chicken Stock,32.0
+2026-01-03,Chicken Stock,35.0
+2026-01-04,Chicken Stock,38.0
+2026-01-05,Chicken Stock,35.0
+2026-01-06,Chicken Stock,40.0
+2026-01-07,Chicken Stock,43.0
+2026-01-08,Chicken Stock,41.0
+2026-01-09,Chicken Stock,45.0
+2026-01-10,Chicken Stock,49.0
+2026-02-05,Butter,105.0
+2026-02-05,Butter,50000.0

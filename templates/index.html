@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Inventory Forecast</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <script src="{{ url_for('static', filename='theme.js') }}"></script>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <div class="nav-brand">
+        <i class="fas fa-utensils"></i>
+        <span>Restaurant Inventory AI</span>
+      </div>
+      <div class="nav-links">
+        <a href="/dashboard"><i class="fas fa-home"></i> Dashboard</a>
+        <a href="/forecast" class="active"><i class="fas fa-chart-line"></i> Forecast</a>
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark mode">        <i class="fas fa-moon"></i>
+        </button>
+        <div class="user-menu">
+          <div class="user-info">
+            <div class="user-avatar">
+              <i class="fas fa-user"></i>
+            </div>
+            <div class="user-details">
+              <span class="user-name">{{ user }}</span>
+            </div>
+          </div>
+          <div class="user-dropdown">
+            <a href="#"><i class="fas fa-user-cog"></i> Settings</a>
+            <a href="#"><i class="fas fa-bell"></i> Notifications</a>
+            <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <header class="page-header">
+      <h1><i class="fas fa-chart-line"></i> Inventory Forecast</h1>
+      <p>Generate demand forecasts and optimize inventory orders</p>
+    </header>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>Forecast Parameters</h2>
+      </div>
+      <div class="card-body">
+        <form id="forecastForm" action="/result" method="POST">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="ingredient"><i class="fas fa-box"></i> Ingredient</label>
+              <select name="ingredient" id="ingredient" required>
+                <option value="">Select ingredient...</option>
+                {% for ingredient in ingredients %}
+                  <option value="{{ ingredient }}">{{ ingredient }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="current_stock"><i class="fas fa-warehouse"></i> Current Stock (units)</label>
+              <input type="number" name="current_stock" id="current_stock" step="0.1" value="50" required />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="lead_time_days"><i class="fas fa-truck"></i> Supplier Lead Time (days)</label>
+              <input type="number" name="lead_time_days" id="lead_time_days" value="3" min="1" required />
+            </div>
+
+            <div class="form-group">
+              <label for="service_level"><i class="fas fa-percentage"></i> Service Level (0-1)</label>
+              <input type="number" name="service_level" id="service_level" step="0.01" value="0.95" min="0" max="1" required />
+              <small>Higher values = lower stockout risk</small>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-chart-line"></i> Generate Forecast
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="resetForm()">
+              <i class="fas fa-undo"></i> Reset
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Quick Preview Section -->
+    <div id="quickPreview" class="card" style="display: none;">
+      <div class="card-header">
+        <h2><i class="fas fa-eye"></i> Quick Preview</h2>
+      </div>
+      <div class="card-body">
+        <canvas id="previewChart" height="80"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="{{ url_for('static', filename='location.js') }}"></script>
+  <script src="{{ url_for('static', filename='forecast.js') }}"></script>
+</body>
+</html>

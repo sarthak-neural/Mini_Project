@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign Up - Restaurant Inventory AI</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <script src="{{ url_for('static', filename='theme.js') }}"></script>
+</head>
+<body class="auth-page">
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark mode" style="position: fixed; top: 1rem; right: 1rem; z-index: 1000;">
+    <i class="fas fa-moon"></i>
+  </button>
+  <div class="auth-container">
+    <div class="auth-left">
+      <div class="auth-brand">
+        <i class="fas fa-utensils"></i>
+        <span>Restaurant Inventory AI</span>
+      </div>
+      <h1>Create Your Account</h1>
+      <p>Join hundreds of restaurants optimizing their inventory with AI-powered forecasting</p>
+      <div class="auth-benefits">
+        <div class="auth-benefit">
+          <i class="fas fa-chart-line"></i>
+          <div>
+            <strong>AI Demand Forecasting</strong>
+            <p>Predict sales with machine learning</p>
+          </div>
+        </div>
+        <div class="auth-benefit">
+          <i class="fas fa-boxes"></i>
+          <div>
+            <strong>Smart Inventory Control</strong>
+            <p>Optimize stock levels automatically</p>
+          </div>
+        </div>
+        <div class="auth-benefit">
+          <i class="fas fa-bell"></i>
+          <div>
+            <strong>Real-time Alerts</strong>
+            <p>Never run out of ingredients</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="auth-right">
+      <div class="auth-form-container">
+        <div class="auth-header">
+          <h2>Create Account</h2>
+          <p>Get started in less than 2 minutes</p>
+        </div>
+
+        {% if error %}
+        <div class="alert alert-error">
+          <i class="fas fa-exclamation-circle"></i> {{ error }}
+        </div>
+        {% endif %}
+
+        <form id="signupForm" action="/signup" method="POST" class="auth-form">
+          {% if simple_session %}
+          <input type="hidden" name="simple_session" value="1" />
+          {% endif %}
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="first_name">
+                <i class="fas fa-user"></i> First Name
+              </label>
+              <input 
+                type="text" 
+                id="first_name" 
+                name="first_name" 
+                placeholder="John" 
+                required 
+                autofocus
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="last_name">
+                <i class="fas fa-user"></i> Last Name
+              </label>
+              <input 
+                type="text" 
+                id="last_name" 
+                name="last_name" 
+                placeholder="Doe" 
+                required
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="restaurant_name">
+              <i class="fas fa-utensils"></i> Restaurant Name
+            </label>
+            <input 
+              type="text" 
+              id="restaurant_name" 
+              name="restaurant_name" 
+              placeholder="Your Restaurant Name" 
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="email">
+              <i class="fas fa-envelope"></i> Email Address
+            </label>
+            <input 
+              type="email" 
+              id="email" 
+              name="email" 
+              placeholder="you@restaurant.com" 
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="password">
+              <i class="fas fa-lock"></i> Password
+            </label>
+            <div class="password-input">
+              <input 
+                type="password" 
+                id="password" 
+                name="password" 
+                placeholder="Create a strong password" 
+                minlength="8"
+                required
+              />
+              <button type="button" class="toggle-password" onclick="togglePassword()">
+                <i class="fas fa-eye" id="toggleIcon"></i>
+              </button>
+            </div>
+            <small class="form-hint">
+              <i class="fas fa-info-circle"></i> At least 8 characters
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" name="terms" required />
+              <span>I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a></span>
+            </label>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block btn-large">
+            <i class="fas fa-rocket"></i> Create Account
+          </button>
+        </form>
+
+        <div class="auth-divider">
+          <span>or sign up with</span>
+        </div>
+
+        <div class="social-auth">
+          <button class="btn-social google">
+            <i class="fab fa-google"></i>
+          </button>
+          <button class="btn-social microsoft">
+            <i class="fab fa-microsoft"></i>
+          </button>
+          <button class="btn-social apple">
+            <i class="fab fa-apple"></i>
+          </button>
+        </div>
+
+        <div class="auth-footer">
+          <p>Already have an account? <a href="/login{% if simple_session %}?simple=1{% endif %}">Sign in</a></p>
+        </div>
+
+        <div class="back-home">
+          <a href="/">
+            <i class="fas fa-arrow-left"></i> Back to Home
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='location.js') }}"></script>
+  <script src="{{ url_for('static', filename='auth.js') }}"></script>
+  <script>
+    // Attach location to signup form
+    document.addEventListener('DOMContentLoaded', function() {
+      attachLocationToForm('signupForm');
+    });
+  </script>
+</body>
+</html>

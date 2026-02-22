@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Forecast Result</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <script src="{{ url_for('static', filename='theme.js') }}"></script>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <div class="nav-brand">
+        <i class="fas fa-utensils"></i>
+        <span>Restaurant Inventory AI</span>
+      </div>
+      <div class="nav-links">
+        <a href="/dashboard"><i class="fas fa-home"></i> Dashboard</a>
+        <a href="/forecast"><i class="fas fa-chart-line"></i> Forecast</a>
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark mode">
+          <i class="fas fa-moon"></i>
+        </button>
+        <div class="user-menu">
+          <div class="user-info">
+            <div class="user-avatar">
+              <i class="fas fa-user"></i>
+            </div>
+          </div>
+          <div class="user-dropdown">
+            <a href="#"><i class="fas fa-user-cog"></i> Settings</a>
+            <a href="#"><i class="fas fa-bell"></i> Notifications</a>
+            <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <header class="page-header">
+      <h1><i class="fas fa-chart-line"></i> Forecast Result: {{ ingredient }}</h1>
+      <p>AI-powered demand forecast and inventory optimization</p>
+    </header>
+
+    <!-- Alerts Section -->
+    {% if alerts %}
+    <div class="alerts-section">
+      {% for alert in alerts %}
+        <div class="alert {% if 'below reorder point' in alert %}alert-warning{% else %}alert-success{% endif %}">
+          <i class="fas {% if 'below reorder point' in alert %}fa-exclamation-triangle{% else %}fa-check-circle{% endif %}"></i>
+          {{ alert }}
+        </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+      <div class="stat-card highlight">
+        <div class="stat-icon" style="background: #4CAF50;">
+          <i class="fas fa-calendar-day"></i>
+        </div>
+        <div class="stat-info">
+          <p class="stat-label">Avg Daily Demand</p>
+          <h2 class="stat-value">{{ forecast.avg_daily }}</h2>
+          <small>units per day</small>
+        </div>
+      </div>
+
+      <div class="stat-card highlight">
+        <div class="stat-icon" style="background: #2196F3;">
+          <i class="fas fa-calendar-week"></i>
+        </div>
+        <div class="stat-info">
+          <p class="stat-label">Weekly Forecast</p>
+          <h2 class="stat-value">{{ forecast.weekly_forecast }}</h2>
+          <small>units per week</small>
+        </div>
+      </div>
+
+      <div class="stat-card highlight">
+        <div class="stat-icon" style="background: #FF9800;">
+          <i class="fas fa-box"></i>
+        </div>
+        <div class="stat-info">
+          <p class="stat-label">Reorder Point</p>
+          <h2 class="stat-value">{{ decision.reorder_point }}</h2>
+          <small>units</small>
+        </div>
+      </div>
+
+      <div class="stat-card highlight">
+        <div class="stat-icon" style="background: #F44336;">
+          <i class="fas fa-shopping-cart"></i>
+        </div>
+        <div class="stat-info">
+          <p class="stat-label">Order Now</p>
+          <h2 class="stat-value">{{ decision.recommended_order }}</h2>
+          <small>units</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart Section -->
+    <div class="card">
+      <div class="card-header">
+        <h2><i class="fas fa-chart-area"></i> Sales & Forecast Trend</h2>
+      </div>
+      <div class="card-body">
+        <canvas id="forecastChart" height="100"></canvas>
+      </div>
+    </div>
+
+    <!-- Detailed Information -->
+    <div class="grid-2col">
+      <div class="card">
+        <div class="card-header">
+          <h2><i class="fas fa-info-circle"></i> Demand Forecast Details</h2>
+        </div>
+        <div class="card-body">
+          <div class="detail-row">
+            <span class="detail-label">Average Daily Demand:</span>
+            <span class="detail-value">{{ forecast.avg_daily }} units</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">7-Day Forecast:</span>
+            <span class="detail-value">{{ forecast.weekly_forecast }} units</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2><i class="fas fa-cogs"></i> Inventory Optimization</h2>
+        </div>
+        <div class="card-body">
+          <div class="detail-row">
+            <span class="detail-label">Current Stock:</span>
+            <span class="detail-value">{{ decision.current_stock }} units</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Demand During Lead Time:</span>
+            <span class="detail-value">{{ decision.demand_during_lead }} units</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Safety Stock:</span>
+            <span class="detail-value">{{ decision.safety_stock }} units</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Reorder Point:</span>
+            <span class="detail-value">{{ decision.reorder_point }} units</span>
+          </div>
+          <div class="detail-row highlight-row">
+            <span class="detail-label"><strong>Recommended Order:</strong></span>
+            <span class="detail-value"><strong>{{ decision.recommended_order }} units</strong></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="card">
+      <div class="card-body">
+        <div class="action-buttons">
+          <a href="/forecast" class="btn btn-primary">
+            <i class="fas fa-chart-line"></i> New Forecast
+          </a>
+          <a href="/dashboard" class="btn btn-secondary">
+            <i class="fas fa-home"></i> Dashboard
+          </a>
+          <button onclick="window.print()" class="btn btn-secondary">
+            <i class="fas fa-print"></i> Print Report
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="{{ url_for('static', filename='location.js') }}"></script>
+  <script>
+    const labels = {{ chart_labels | tojson }};
+    const salesData = {{ chart_sales | tojson }};
+    const forecastData = {{ forecast_values | tojson }};
+
+    const ctx = document.getElementById('forecastChart');
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Historical Sales',
+            data: salesData,
+            borderColor: '#2b3a67',
+            backgroundColor: 'rgba(43, 58, 103, 0.1)',
+            spanGaps: true,
+            tension: 0.3,
+            fill: true,
+            pointRadius: 4,
+            pointHoverRadius: 6
+          },
+          {
+            label: 'Forecast (Next 7 days)',
+            data: forecastData,
+            borderColor: '#ff8c42',
+            backgroundColor: 'rgba(255, 140, 66, 0.1)',
+            borderDash: [6, 4],
+            spanGaps: true,
+            tension: 0.3,
+            fill: true,
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { 
+            position: 'top',
+            labels: {
+              usePointStyle: true,
+              padding: 20
+            }
+          },
+          tooltip: {
+            mode: 'index',
+            intersect: false
+          }
+        },
+        scales: {
+          y: { 
+            beginAtZero: true,
+            title: { 
+              display: true, 
+              text: 'Units',
+              font: { weight: 'bold' }
+            },
+            grid: {
+              color: 'rgba(0, 0, 0, 0.05)'
+            }
+          },
+          x: { 
+            title: { 
+              display: true, 
+              text: 'Date',
+              font: { weight: 'bold' }
+            },
+            grid: {
+              color: 'rgba(0, 0, 0, 0.05)'
+            }
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>
