@@ -39,6 +39,7 @@ body {
   font-size: 1.5rem;
   font-weight: bold;
   color: #2b3a67;
+  text-decoration: none;
 }
 
 .nav-brand i {
@@ -663,6 +664,10 @@ canvas {
   padding: 1.5rem 3rem;
   position: relative;
   z-index: 10;
+}
+
+.landing-page .nav-brand i {
+  color: #fff;
 }
 
 .nav-actions {
@@ -1379,6 +1384,8 @@ body.auth-page .theme-toggle:hover {
   font-size: 1.5rem;
   font-weight: bold;
   margin-bottom: 3rem;
+  text-decoration: none;
+  color: inherit;
 }
 
 .auth-brand i {
@@ -1974,22 +1981,26 @@ body.auth-page .theme-toggle:hover {
 }
 
 .units-display {
-  font-size: 0.85rem;
-  color: #666;
-  padding: 0.5rem 0;
+  font-size: 0.9rem;
+  color: #2b3a67;
+  padding: 0.75rem 1rem;
   display: flex;
-  gap: 1rem;
+  gap: 1.5rem;
   flex-wrap: wrap;
+  background: #e8eef7;
+  border-radius: 8px;
 }
 
 .unit-info {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  color: #333;
 }
 
 .unit-info strong {
   color: #2b3a67;
+  font-weight: 600;
 }
 /* Dark Mode Styles for All Pages */
 body.dark-mode {
@@ -2167,11 +2178,16 @@ body.dark-mode .location-display i {
 }
 
 body.dark-mode .units-display {
-  color: #9ca3af;
+  color: #e5e7eb;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+body.dark-mode .unit-info {
+  color: #e5e7eb;
 }
 
 body.dark-mode .unit-info strong {
-  color: #e5e7eb;
+  color: #93c5fd;
 }
 
 body.dark-mode .container {

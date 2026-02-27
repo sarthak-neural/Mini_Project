@@ -11,10 +11,10 @@
 <body>
   <nav class="navbar">
     <div class="container">
-      <div class="nav-brand">
+      <a class="nav-brand" href="/">
         <i class="fas fa-utensils"></i>
         <span>Restaurant Inventory AI</span>
-      </div>
+      </a>
       <div class="nav-links">
         <a href="/dashboard" class="active"><i class="fas fa-home"></i> Dashboard</a>
         <a href="/forecast"><i class="fas fa-chart-line"></i> Forecast</a>
@@ -140,6 +140,9 @@
             <button class="btn btn-secondary" onclick="showAddSaleModal()">
               <i class="fas fa-plus"></i> Add Sale Record
             </button>
+            <button class="btn btn-secondary" onclick="showAlertSettingsModal()">
+              <i class="fas fa-bell"></i> Alert Settings
+            </button>
             <button class="btn btn-secondary" onclick="refreshDashboard()">
               <i class="fas fa-sync-alt"></i> Refresh Data
             </button>
@@ -184,9 +187,64 @@
     </div>
   </div>
 
+  <!-- Alert Settings Modal -->
+  <div id="alertSettingsModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2><i class="fas fa-bell"></i> Alert Settings</h2>
+        <span class="close" onclick="closeAlertSettingsModal()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <form id="alertSettingsForm">
+          <div class="form-group">
+            <label for="alert-email">Email Address</label>
+            <input type="email" id="alert-email" placeholder="your@email.com" />
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="email-enabled" name="email_enabled" />
+              <span>Enable Email Alerts</span>
+            </label>
+            <button type="button" class="btn btn-secondary" style="margin-top: 0.5rem;" onclick="testEmailAlert()">
+              <i class="fas fa-envelope"></i> Send Test Email
+            </button>
+          </div>
+
+          <div class="form-group">
+            <label for="alert-phone">Phone Number (for SMS)</label>
+            <input type="tel" id="alert-phone" placeholder="+1234567890" />
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="sms-enabled" name="sms_enabled" />
+              <span>Enable SMS Alerts</span>
+            </label>
+            <button type="button" class="btn btn-secondary" style="margin-top: 0.5rem;" onclick="testSmsAlert()">
+              <i class="fas fa-sms"></i> Send Test SMS
+            </button>
+          </div>
+
+          <div class="form-group">
+            <label for="alert-threshold">Low Stock Alert Threshold (%)</label>
+            <input type="number" id="alert-threshold" min="5" max="100" value="20" />
+            <small>Alert when stock falls below this percentage of reorder point</small>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeAlertSettingsModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Settings</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="{{ url_for('static', filename='location.js') }}"></script>
   <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+  <script src="{{ url_for('static', filename='alerts.js') }}"></script>
   <script>
     // Display user location and units on dashboard load
     document.addEventListener('DOMContentLoaded', function() {

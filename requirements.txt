@@ -1,3 +1,11 @@
 flask
 pandas
 numpy
+scikit-learn>=1.0.0
+statsmodels>=0.13.0
+prophet>=1.1.0
+tensorflow>=2.10.0
+keras>=2.10.0
+Flask-Mail>=0.9.1
+twilio>=8.0.0
+python-dotenv>=0.19.0

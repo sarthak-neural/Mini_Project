@@ -3,11 +3,26 @@ import pandas as pd
 import os
 from datetime import datetime, timedelta
 from functools import wraps
+from dotenv import load_dotenv
 from model import forecast_demand, optimize_inventory, generate_alerts
+from alerts import init_alerts
+
+load_dotenv()
 
 app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
 app.secret_key = 'your-secret-key-change-in-production'  # Change this in production!
+
+# Email configuration
+app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
+app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', True)
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', 'noreply@restaurantai.com')
+
+# Initialize alert manager
+alert_manager = init_alerts(app)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH = os.path.join(BASE_DIR, "data", "sales_data.csv")
@@ -40,9 +55,16 @@ users_db = {
     'demo@restaurant.com': {
         'password': 'demo123',
         'name': 'Demo User',
+        'email': 'demo@restaurant.com',
         'restaurant': 'Demo Restaurant',
         'location': {'latitude': 40.7128, 'longitude': -74.0060, 'country': 'US', 'city': 'New York'},
-        'units': UNIT_STANDARDS.get('US', {})
+        'units': UNIT_STANDARDS.get('US', {}),
+        'alert_preferences': {
+            'email_enabled': False,
+            'sms_enabled': False,
+            'phone_number': '',
+            'alert_threshold_percentage': 20  # Alert when stock falls below 20% of reorder point
+        }
     }
 }
 
@@ -338,12 +360,30 @@ def result():
     historical_series = chart_sales + [None] * len(forecast_values)
     forecast_series = [None] * len(chart_sales) + forecast_values
 
+    # Check if alert should be sent for low stock
+    alerts_sent = []
+    user = session.get('user')
+    if user and user in users_db:
+        user_data = users_db[user]
+        alert_prefs = user_data.get('alert_preferences', {})
+        
+        # Send low stock alert if stock is below reorder point
+        if current_stock < decision['reorder_point']:
+            alerts_sent = alert_manager.send_low_stock_alert(
+                user_data,
+                ingredient,
+                current_stock,
+                decision['reorder_point'],
+                alert_prefs
+            )
+
     return render_template(
         "result.html",
         ingredient=ingredient,
         forecast=forecast,
         decision=decision,
         alerts=alerts,
+        alerts_sent=alerts_sent,
         chart_labels=combined_labels,
         chart_sales=historical_series,
         forecast_values=forecast_series,
@@ -368,13 +408,14 @@ def dashboard_stats():
         df = pd.read_csv(DATA_PATH)
         df["date"] = pd.to_datetime(df["date"])
 
+        today = datetime.now().date()
         stats = {
             "total_ingredients": int(df["ingredient"].nunique()),
             "total_sales": float(df["quantity_sold"].sum()),
             "avg_daily_sales": float(df.groupby("date")["quantity_sold"].sum().mean()),
             "date_range": {
-                "start": df["date"].min().strftime("%Y-%m-%d"),
-                "end": df["date"].max().strftime("%Y-%m-%d")
+                "start": (today - timedelta(days=6)).strftime("%Y-%m-%d"),
+                "end": today.strftime("%Y-%m-%d")
             }
         }
         
@@ -386,10 +427,13 @@ def dashboard_stats():
         ]
         
         # Recent trends (last 7 days)
-        recent_df = df[df["date"] >= (df["date"].max() - timedelta(days=6))]
+        recent_start = today - timedelta(days=6)
+        recent_df = df[df["date"].dt.date >= recent_start]
         daily_totals = recent_df.groupby("date")["quantity_sold"].sum().sort_index()
+        date_index = pd.date_range(recent_start, today, freq="D")
+        daily_totals = daily_totals.reindex(date_index, fill_value=0)
         stats["recent_trend"] = {
-            "labels": [d.strftime("%Y-%m-%d") for d in daily_totals.index],
+            "labels": [d.strftime("%Y-%m-%d") for d in date_index],
             "values": [float(v) for v in daily_totals.values]
         }
         
@@ -618,6 +662,133 @@ def add_sale():
         df.to_csv(DATA_PATH, index=False)
         
         return jsonify({"success": True, "message": "Sale added successfully"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@login_required
+@app.route("/api/alerts/preferences", methods=["GET"])
+def get_alert_preferences():
+    """Get user's alert preferences"""
+    try:
+        user = session.get('user')
+        if user and user in users_db:
+            prefs = users_db[user].get('alert_preferences', {})
+            return jsonify({
+                "success": True,
+                "preferences": prefs,
+                "alerts_available": {
+                    "email": alert_manager.mail is not None,
+                    "sms": alert_manager.twilio_client is not None
+                }
+            })
+        return jsonify({"success": False, "error": "User not found"}), 404
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@login_required
+@app.route("/api/alerts/preferences", methods=["POST"])
+def update_alert_preferences():
+    """Update user's alert preferences"""
+    try:
+        user = session.get('user')
+        data = request.get_json()
+        
+        if user and user in users_db:
+            users_db[user]['alert_preferences'] = {
+                'email_enabled': data.get('email_enabled', False),
+                'sms_enabled': data.get('sms_enabled', False),
+                'phone_number': data.get('phone_number', ''),
+                'alert_threshold_percentage': int(data.get('alert_threshold_percentage', 20))
+            }
+            
+            # Update email if provided
+            if data.get('email'):
+                users_db[user]['email'] = data.get('email')
+            
+            return jsonify({
+                "success": True,
+                "message": "Alert preferences updated successfully",
+                "preferences": users_db[user]['alert_preferences']
+            })
+        return jsonify({"success": False, "error": "User not found"}), 404
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@login_required
+@app.route("/api/alerts/test", methods=["POST"])
+def test_alert():
+    """Send a test alert to verify configuration"""
+    try:
+        user = session.get('user')
+        data = request.get_json()
+        channel = data.get('channel', 'email')  # 'email' or 'sms'
+        
+        if user and user in users_db:
+            user_data = users_db[user]
+            
+            if channel == 'email':
+                contact = user_data.get('email')
+                success = alert_manager.test_alert(contact, 'email')
+            elif channel == 'sms':
+                contact = user_data['alert_preferences'].get('phone_number')
+                success = alert_manager.test_alert(contact, 'sms')
+            else:
+                return jsonify({"success": False, "error": "Invalid channel"}), 400
+            
+            if success:
+                return jsonify({
+                    "success": True,
+                    "message": f"Test {channel} alert sent successfully"
+                })
+            else:
+                return jsonify({
+                    "success": False,
+                    "error": f"Failed to send test {channel} alert. Check configuration."
+                }), 500
+        
+        return jsonify({"success": False, "error": "User not found"}), 404
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@login_required
+@app.route("/api/alerts/check-stock", methods=["POST"])
+def check_stock_and_alert():
+    """Check stock levels and send alerts if needed"""
+    try:
+        user = session.get('user')
+        data = request.get_json()
+        ingredient = data.get('ingredient')
+        current_stock = float(data.get('current_stock', 0))
+        reorder_point = float(data.get('reorder_point', 0))
+        
+        if user and user in users_db:
+            user_data = users_db[user]
+            alert_prefs = user_data.get('alert_preferences', {})
+            
+            # Check if alert should be sent
+            if current_stock < reorder_point:
+                alerts_sent = alert_manager.send_low_stock_alert(
+                    user_data,
+                    ingredient,
+                    current_stock,
+                    reorder_point,
+                    alert_prefs
+                )
+                
+                return jsonify({
+                    "success": True,
+                    "alert_triggered": True,
+                    "alerts_sent": alerts_sent,
+                    "message": f"Low stock alert sent via {', '.join(alerts_sent) if alerts_sent else 'no configured channels'}"
+                })
+            else:
+                return jsonify({
+                    "success": True,
+                    "alert_triggered": False,
+                    "message": "Stock level is sufficient"
+                })
+        
+        return jsonify({"success": False, "error": "User not found"}), 404
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 

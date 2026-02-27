@@ -11,10 +11,10 @@
 <body>
   <nav class="navbar">
     <div class="container">
-      <div class="nav-brand">
+      <a class="nav-brand" href="/">
         <i class="fas fa-utensils"></i>
         <span>Restaurant Inventory AI</span>
-      </div>
+      </a>
       <div class="nav-links">
         <a href="/dashboard"><i class="fas fa-home"></i> Dashboard</a>
         <a href="/forecast"><i class="fas fa-chart-line"></i> Forecast</a>
@@ -43,8 +43,30 @@
       <p>AI-powered demand forecast and inventory optimization</p>
     </header>
 
+    <!-- AI Model Information -->
+    <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin-bottom: 1.5rem;">
+      <div class="card-body" style="padding: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <i class="fas fa-brain" style="font-size: 2.5rem; opacity: 0.9;"></i>
+            <div>
+              <h3 style="margin: 0; font-size: 1.1rem; opacity: 0.9;">AI Model</h3>
+              <p style="margin: 0; font-size: 1.3rem; font-weight: 600;">{{ forecast.model_used }}</p>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <i class="fas fa-chart-line" style="font-size: 2.5rem; opacity: 0.9;"></i>
+            <div>
+              <h3 style="margin: 0; font-size: 1.1rem; opacity: 0.9;">Confidence Level</h3>
+              <p style="margin: 0; font-size: 1.3rem; font-weight: 600;">{{ forecast.confidence }}%</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Alerts Section -->
-    {% if alerts %}
+    {% if alerts or alerts_sent %}
     <div class="alerts-section">
       {% for alert in alerts %}
         <div class="alert {% if 'below reorder point' in alert %}alert-warning{% else %}alert-success{% endif %}">
@@ -52,6 +74,22 @@
           {{ alert }}
         </div>
       {% endfor %}
+      
+      {% if alerts_sent %}
+        <div class="alert alert-success">
+          <i class="fas fa-bell"></i>
+          <strong>Automated Alerts Sent:</strong>
+          {% if 'email' in alerts_sent %}
+            Email notification sent to your registered address.
+          {% endif %}
+          {% if 'sms' in alerts_sent %}
+            SMS notification sent to your registered phone.
+          {% endif %}
+          {% if not alerts_sent %}
+            No alert channels configured. Configure in Dashboard > Alert Settings.
+          {% endif %}
+        </div>
+      {% endif %}
     </div>
     {% endif %}
 
@@ -120,6 +158,14 @@
         </div>
         <div class="card-body">
           <div class="detail-row">
+            <span class="detail-label">AI Model Used:</span>
+            <span class="detail-value"><strong>{{ forecast.model_used }}</strong></span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Confidence Level:</span>
+            <span class="detail-value"><strong>{{ forecast.confidence }}%</strong></span>
+          </div>
+          <div class="detail-row" style="border-top: 1px solid #e0e0e0; margin-top: 0.5rem; padding-top: 0.5rem;">
             <span class="detail-label">Average Daily Demand:</span>
             <span class="detail-value">{{ forecast.avg_daily }} units</span>
           </div>
