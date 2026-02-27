@@ -140,10 +140,55 @@
       </div>
     </div>
 
+    <!-- Model Performance Comparison -->
+    <div class="card">
+      <div class="card-header">
+        <h2><i class="fas fa-chart-bar"></i> Model Performance Comparison</h2>
+        <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; opacity: 0.8;">
+          How well the model fits historical data (lower error is better)
+        </p>
+      </div>
+      <div class="card-body">
+        <!-- Error Metrics -->
+        <div style="display: flex; gap: 1.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+          <div class="stat-card" style="flex: 1; min-width: 200px; padding: 1rem;">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+              <div class="stat-icon" style="background: #9C27B0; width: 50px; height: 50px;">
+                <i class="fas fa-chart-line" style="font-size: 1.3rem;"></i>
+              </div>
+              <div>
+                <p class="stat-label">RMSE</p>
+                <h2 class="stat-value" style="font-size: 1.5rem;">{{ error_metrics.rmse }}</h2>
+                <small>Root Mean Square Error</small>
+              </div>
+            </div>
+          </div>
+          <div class="stat-card" style="flex: 1; min-width: 200px; padding: 1rem;">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+              <div class="stat-icon" style="background: #00BCD4; width: 50px; height: 50px;">
+                <i class="fas fa-ruler" style="font-size: 1.3rem;"></i>
+              </div>
+              <div>
+                <p class="stat-label">MAE</p>
+                <h2 class="stat-value" style="font-size: 1.5rem;">{{ error_metrics.mae }}</h2>
+                <small>Mean Absolute Error</small>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Performance Chart -->
+        <canvas id="performanceChart" height="100"></canvas>
+      </div>
+    </div>
+
     <!-- Chart Section -->
     <div class="card">
       <div class="card-header">
-        <h2><i class="fas fa-chart-area"></i> Sales & Forecast Trend</h2>
+        <h2><i class="fas fa-chart-area"></i> Sales Forecast with Confidence Intervals</h2>
+        <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; opacity: 0.8;">
+          Future predictions with 95% confidence bands
+        </p>
       </div>
       <div class="card-body">
         <canvas id="forecastChart" height="100"></canvas>
@@ -226,9 +271,108 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="{{ url_for('static', filename='location.js') }}"></script>
   <script>
+    // Data from backend
     const labels = {{ chart_labels | tojson }};
     const salesData = {{ chart_sales | tojson }};
     const forecastData = {{ forecast_values | tojson }};
+    const trainingLabels = {{ training_labels | tojson }};
+    const trainingActual = {{ training_actual | tojson }};
+    const trainingPredicted = {{ training_predicted | tojson }};
+    const confidenceLower = {{ confidence_lower | tojson }};
+    const confidenceUpper = {{ confidence_upper | tojson }};
+
+    // Performance Comparison Chart
+    const perfCtx = document.getElementById('performanceChart');
+    new Chart(perfCtx, {
+      type: 'line',
+      data: {
+        labels: trainingLabels,
+        datasets: [
+          {
+            label: 'Actual Sales',
+            data: trainingActual,
+            borderColor: '#2b3a67',
+            backgroundColor: 'rgba(43, 58, 103, 0.2)',
+            tension: 0.3,
+            fill: false,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            borderWidth: 2
+          },
+          {
+            label: 'Model Predictions',
+            data: trainingPredicted,
+            borderColor: '#4CAF50',
+            backgroundColor: 'rgba(76, 175, 80, 0.2)',
+            tension: 0.3,
+            fill: false,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            borderWidth: 2
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { 
+            position: 'top',
+            labels: {
+              usePointStyle: true,
+              padding: 20,
+              font: { size: 12 }
+            }
+          },
+          tooltip: {
+            mode: 'index',
+            intersect: false,
+            callbacks: {
+              afterLabel: function(context) {
+                if (context.datasetIndex === 0) {
+                  const predicted = trainingPredicted[context.dataIndex];
+                  const actual = trainingActual[context.dataIndex];
+                  if (predicted != null && actual != null) {
+                    const error = Math.abs(actual - predicted);
+                    return 'Error: ' + error.toFixed(2) + ' units';
+                  }
+                }
+                return '';
+              }
+            }
+          }
+        },
+        scales: {
+          y: { 
+            beginAtZero: true,
+            title: { 
+              display: true, 
+              text: 'Units',
+              font: { weight: 'bold', size: 13 }
+            },
+            grid: {
+              color: 'rgba(0, 0, 0, 0.05)'
+            }
+          },
+          x: { 
+            title: { 
+              display: true, 
+              text: 'Date',
+              font: { weight: 'bold', size: 13 }
+            },
+            grid: {
+              color: 'rgba(0, 0, 0, 0.05)'
+            }
+          }
+        }
+      }
+    });
+
+    // Forecast Chart with Confidence Intervals
+    // Create confidence interval data for forecast period only
+    const forecastStartIndex = labels.length - forecastData.filter(v => v !== null).length;
+    const confidenceLowerFull = new Array(forecastStartIndex).fill(null).concat(confidenceLower);
+    const confidenceUpperFull = new Array(forecastStartIndex).fill(null).concat(confidenceUpper);
 
     const ctx = document.getElementById('forecastChart');
     new Chart(ctx, {
@@ -245,7 +389,8 @@
             tension: 0.3,
             fill: true,
             pointRadius: 4,
-            pointHoverRadius: 6
+            pointHoverRadius: 6,
+            borderWidth: 2
           },
           {
             label: 'Forecast (Next 7 days)',
@@ -257,24 +402,82 @@
             tension: 0.3,
             fill: true,
             pointRadius: 4,
-            pointHoverRadius: 6
+            pointHoverRadius: 6,
+            borderWidth: 2
+          },
+          {
+            label: '95% Confidence Upper',
+            data: confidenceUpperFull,
+            borderColor: '#FF9800',
+            backgroundColor: 'rgba(255, 152, 0, 0.1)',
+            borderDash: [3, 3],
+            spanGaps: true,
+            tension: 0.3,
+            fill: '+1',
+            pointRadius: 0,
+            borderWidth: 1.5,
+            order: 2
+          },
+          {
+            label: '95% Confidence Lower',
+            data: confidenceLowerFull,
+            borderColor: '#FF9800',
+            backgroundColor: 'rgba(255, 152, 0, 0.15)',
+            borderDash: [3, 3],
+            spanGaps: true,
+            tension: 0.3,
+            fill: false,
+            pointRadius: 0,
+            borderWidth: 1.5,
+            order: 2
           }
         ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: true,
+        interaction: {
+          mode: 'index',
+          intersect: false
+        },
         plugins: {
           legend: { 
             position: 'top',
             labels: {
               usePointStyle: true,
-              padding: 20
+              padding: 20,
+              font: { size: 12 },
+              filter: function(item, chart) {
+                // Show only one "Confidence Interval" label instead of both upper and lower
+                return !item.text.includes('Lower');
+              },
+              generateLabels: function(chart) {
+                const labels = Chart.defaults.plugins.legend.labels.generateLabels(chart);
+                // Rename confidence interval labels
+                labels.forEach((label, i) => {
+                  if (label.text.includes('Upper')) {
+                    label.text = '95% Confidence Interval';
+                  }
+                });
+                return labels;
+              }
             }
           },
           tooltip: {
             mode: 'index',
-            intersect: false
+            intersect: false,
+            callbacks: {
+              label: function(context) {
+                let label = context.dataset.label || '';
+                if (label) {
+                  label += ': ';
+                }
+                if (context.parsed.y !== null) {
+                  label += context.parsed.y.toFixed(2) + ' units';
+                }
+                return label;
+              }
+            }
           }
         },
         scales: {
@@ -283,7 +486,7 @@
             title: { 
               display: true, 
               text: 'Units',
-              font: { weight: 'bold' }
+              font: { weight: 'bold', size: 13 }
             },
             grid: {
               color: 'rgba(0, 0, 0, 0.05)'
@@ -293,7 +496,7 @@
             title: { 
               display: true, 
               text: 'Date',
-              font: { weight: 'bold' }
+              font: { weight: 'bold', size: 13 }
             },
             grid: {
               color: 'rgba(0, 0, 0, 0.05)'

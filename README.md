@@ -40,6 +40,8 @@ Restaurant Inventory AI is an industry-level web application that combines **adv
 - **Exponential Smoothing**: Holt-Winters method for balanced forecasting
 - **Moving Average**: Fallback method for minimal datasets
 - **Automatic Selection**: System evaluates all models and picks the best based on confidence scores
+- **Performance Metrics**: Visual comparison of actual vs predicted values with RMSE and MAE error metrics
+- **Confidence Intervals**: 95% confidence bands on forecast predictions showing uncertainty ranges
 
 ### 2. **Intelligent Inventory Optimization**
 - Reorder point calculation based on lead time and service level
@@ -72,6 +74,9 @@ Restaurant Inventory AI is an industry-level web application that combines **adv
 
 ### 6. **Forecast Results Page**
 - AI model used and confidence percentage
+- **Model Performance Comparison**: Visual chart showing actual vs predicted values on training data
+- **Error Metrics**: RMSE (Root Mean Square Error) and MAE (Mean Absolute Error) for model accuracy
+- **Confidence Intervals**: 95% confidence bands on future predictions showing uncertainty ranges
 - Historical vs predicted demand comparison
 - Low stock alerts
 - Detailed forecast breakdown

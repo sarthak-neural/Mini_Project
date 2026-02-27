@@ -4,7 +4,9 @@ import os
 from datetime import datetime, timedelta
 from functools import wraps
 from dotenv import load_dotenv
-from model import forecast_demand, optimize_inventory, generate_alerts
+from model import (forecast_demand, optimize_inventory, generate_alerts, 
+                   calculate_error_metrics, generate_training_predictions, 
+                   calculate_confidence_intervals)
 from alerts import init_alerts
 
 load_dotenv()
@@ -360,6 +362,17 @@ def result():
     historical_series = chart_sales + [None] * len(forecast_values)
     forecast_series = [None] * len(chart_sales) + forecast_values
 
+    # Calculate training predictions for performance comparison
+    sales_array = ingredient_df["quantity_sold"].values
+    model_name = forecast.get("model_used", "Moving Average")
+    training_predictions = generate_training_predictions(sales_array, model_name, ingredient_df)
+    
+    # Calculate error metrics
+    error_metrics = calculate_error_metrics(sales_array, training_predictions)
+    
+    # Calculate confidence intervals for forecast
+    confidence_intervals = calculate_confidence_intervals(sales_array, forecast_values)
+
     # Check if alert should be sent for low stock
     alerts_sent = []
     user = session.get('user')
@@ -387,6 +400,14 @@ def result():
         chart_labels=combined_labels,
         chart_sales=historical_series,
         forecast_values=forecast_series,
+        # New performance comparison data
+        training_labels=chart_labels,
+        training_actual=chart_sales,
+        training_predicted=training_predictions.tolist() if hasattr(training_predictions, 'tolist') else training_predictions,
+        error_metrics=error_metrics,
+        # Confidence intervals
+        confidence_lower=confidence_intervals['lower'],
+        confidence_upper=confidence_intervals['upper'],
     )
 
 @login_required
