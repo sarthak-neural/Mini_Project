@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Settings - Restaurant Inventory AI</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <script src="{{ url_for('static', filename='theme.js') }}"></script>
+  <style>
+    .settings-container {
+      max-width: 900px;
+      margin: 2rem auto;
+      display: grid;
+      grid-template-columns: 250px 1fr;
+      gap: 2rem;
+    }
+
+    .settings-menu {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .settings-menu-item {
+      margin-bottom: 0.5rem;
+    }
+
+    .settings-menu-link {
+      display: block;
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      text-decoration: none;
+      color: #333;
+      transition: all 0.3s ease;
+      border-left: 4px solid transparent;
+    }
+
+    .settings-menu-link:hover {
+      background-color: #f5f5f5;
+      border-left-color: #2196F3;
+    }
+
+    .settings-menu-link.active {
+      background-color: #E3F2FD;
+      border-left-color: #2196F3;
+      color: #2196F3;
+      font-weight: 500;
+    }
+
+    .settings-panel {
+      display: none;
+    }
+
+    .settings-panel.active {
+      display: block;
+    }
+
+    .settings-section {
+      background: white;
+      border-radius: 8px;
+      padding: 2rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .settings-section h2 {
+      margin-top: 0;
+      color: #1976D2;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .settings-field {
+      margin-bottom: 1.5rem;
+    }
+
+    .settings-field label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      color: #333;
+    }
+
+    .settings-field input,
+    .settings-field select,
+    .settings-field textarea {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 1rem;
+      font-family: inherit;
+    }
+
+    .settings-field input:focus,
+    .settings-field select:focus,
+    .settings-field textarea:focus {
+      outline: none;
+      border-color: #2196F3;
+      box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+    }
+
+    .settings-field small {
+      display: block;
+      margin-top: 0.25rem;
+      color: #666;
+    }
+
+    .password-field {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    .btn-save {
+      background-color: #4CAF50;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background-color 0.3s;
+    }
+
+    .btn-save:hover {
+      background-color: #45a049;
+    }
+
+    .btn-cancel {
+      background-color: #757575;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background-color 0.3s;
+    }
+
+    .btn-cancel:hover {
+      background-color: #616161;
+    }
+
+    .btn-danger {
+      background-color: #F44336;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background-color 0.3s;
+    }
+
+    .btn-danger:hover {
+      background-color: #da190b;
+    }
+
+    .alert {
+      padding: 1rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+
+    .alert-success {
+      background-color: #E8F5E9;
+      color: #2E7D32;
+      border-left: 4px solid #4CAF50;
+    }
+
+    .alert-error {
+      background-color: #FFEBEE;
+      color: #C62828;
+      border-left: 4px solid #F44336;
+    }
+
+    .alert-info {
+      background-color: #E3F2FD;
+      color: #1565C0;
+      border-left: 4px solid #2196F3;
+    }
+
+    .profile-avatar {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+
+    .avatar-circle {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+
+    .location-display {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      background-color: #f5f5f5;
+      padding: 1rem;
+      border-radius: 4px;
+      margin-top: 1rem;
+    }
+
+    .location-item {
+      padding: 0.5rem;
+    }
+
+    .location-item strong {
+      display: block;
+      color: #1976D2;
+    }
+
+    @media (max-width: 768px) {
+      .settings-container {
+        grid-template-columns: 1fr;
+      }
+
+      .password-field {
+        grid-template-columns: 1fr;
+      }
+
+      .button-group {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a class="nav-brand" href="/">
+        <i class="fas fa-utensils"></i>
+        <span>Restaurant Inventory AI</span>
+      </a>
+      <div class="nav-links">
+        <a href="/dashboard"><i class="fas fa-home"></i> Dashboard</a>
+        <a href="/forecast"><i class="fas fa-chart-line"></i> Forecast</a>
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark mode">
+          <i class="fas fa-moon"></i>
+        </button>
+        <div class="user-menu">
+          <div class="user-info">
+            <div class="user-avatar">
+              <i class="fas fa-user"></i>
+            </div>
+            <div class="user-details">
+              <span class="user-name">{{ user }}</span>
+              <span class="user-restaurant">{{ restaurant }}</span>
+            </div>
+          </div>
+          <div class="user-dropdown">
+            <a href="/settings" class="active"><i class="fas fa-user-cog"></i> Settings</a>
+            <a href="#"><i class="fas fa-bell"></i> Notifications</a>
+            <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <header class="page-header">
+      <h1><i class="fas fa-user-cog"></i> Account Settings</h1>
+      <p>Manage your account, preferences, and security settings</p>
+    </header>
+
+    <div class="settings-container">
+      <ul class="settings-menu">
+        <li class="settings-menu-item">
+          <a href="#profile" class="settings-menu-link active" onclick="switchPanel('profile')">
+            <i class="fas fa-user"></i> Profile
+          </a>
+        </li>
+        <li class="settings-menu-item">
+          <a href="#location" class="settings-menu-link" onclick="switchPanel('location')">
+            <i class="fas fa-map-marker-alt"></i> Location & Units
+          </a>
+        </li>
+        <li class="settings-menu-item">
+          <a href="#security" class="settings-menu-link" onclick="switchPanel('security')">
+            <i class="fas fa-lock"></i> Security
+          </a>
+        </li>
+        <li class="settings-menu-item">
+          <a href="#notifications" class="settings-menu-link" onclick="switchPanel('notifications')">
+            <i class="fas fa-bell"></i> Notifications
+          </a>
+        </li>
+        <li class="settings-menu-item">
+          <a href="#account" class="settings-menu-link" onclick="switchPanel('account')">
+            <i class="fas fa-trash"></i> Danger Zone
+          </a>
+        </li>
+      </ul>
+
+      <!-- Profile Panel -->
+      <div id="profile-panel" class="settings-panel active">
+        <div class="settings-section">
+          <h2><i class="fas fa-user"></i> Profile Information</h2>
+          <div id="profile-alert"></div>
+
+          <div class="profile-avatar">
+            <div class="avatar-circle"><i class="fas fa-user"></i></div>
+            <p>{{ user }}</p>
+          </div>
+
+          <form id="profile-form">
+            <div class="settings-field">
+              <label for="email">Email Address</label>
+              <input type="email" id="email" value="{{ user }}" readonly />
+              <small>Your unique email address</small>
+            </div>
+
+            <div class="settings-field">
+              <label for="first-name">First Name</label>
+              <input type="text" id="first-name" placeholder="First Name" />
+            </div>
+
+            <div class="settings-field">
+              <label for="last-name">Last Name</label>
+              <input type="text" id="last-name" placeholder="Last Name" />
+            </div>
+
+            <div class="settings-field">
+              <label for="restaurant-name">Restaurant Name</label>
+              <input type="text" id="restaurant-name" placeholder="Your Restaurant Name" />
+              <small>The name of your restaurant or establishment</small>
+            </div>
+
+            <div class="button-group">
+              <button type="submit" class="btn-save">
+                <i class="fas fa-save"></i> Save Profile
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Location Panel -->
+      <div id="location-panel" class="settings-panel">
+        <div class="settings-section">
+          <h2><i class="fas fa-map-marker-alt"></i> Location & Units</h2>
+          <div id="location-alert"></div>
+
+          <form id="location-form">
+            <div class="settings-field">
+              <label for="country">Country</label>
+              <select id="country">
+                <option value="">Select Country...</option>
+                <option value="US">United States</option>
+                <option value="CA">Canada</option>
+                <option value="GB">United Kingdom</option>
+                <option value="AU">Australia</option>
+                <option value="DE">Germany</option>
+                <option value="FR">France</option>
+                <option value="IN">India</option>
+                <option value="JP">Japan</option>
+                <option value="CN">China</option>
+                <option value="MX">Mexico</option>
+                <option value="BR">Brazil</option>
+              </select>
+            </div>
+
+            <div class="settings-field">
+              <label for="city">City</label>
+              <input type="text" id="city" placeholder="City" />
+            </div>
+
+            <div class="location-display" id="unit-display">
+              <div class="location-item">
+                <strong>Weight Unit:</strong>
+                <span id="weight-unit">-</span>
+              </div>
+              <div class="location-item">
+                <strong>Volume Unit:</strong>
+                <span id="volume-unit">-</span>
+              </div>
+              <div class="location-item">
+                <strong>Currency:</strong>
+                <span id="currency">-</span>
+              </div>
+            </div>
+
+            <div class="button-group">
+              <button type="submit" class="btn-save">
+                <i class="fas fa-save"></i> Save Location
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Security Panel -->
+      <div id="security-panel" class="settings-panel">
+        <div class="settings-section">
+          <h2><i class="fas fa-lock"></i> Security Settings</h2>
+          <div id="security-alert"></div>
+
+          <h3>Change Password</h3>
+          <form id="password-form">
+            <div class="password-field">
+              <div class="settings-field">
+                <label for="current-password">Current Password</label>
+                <input type="password" id="current-password" placeholder="Enter current password" />
+              </div>
+
+              <div class="settings-field">
+                <label for="new-password">New Password</label>
+                <input type="password" id="new-password" placeholder="Enter new password" />
+              </div>
+            </div>
+
+            <div class="password-field">
+              <div class="settings-field">
+                <label for="new-password-confirm">Confirm Password</label>
+                <input type="password" id="new-password-confirm" placeholder="Confirm new password" />
+              </div>
+
+              <div class="settings-field">
+                <div style="padding: 0.75rem; background-color: #f5f5f5; border-radius: 4px;">
+                  <strong style="display: block; margin-bottom: 0.5rem;">Password Requirements:</strong>
+                  <ul style="margin: 0; padding-left: 1.5rem; font-size: 0.9rem;">
+                    <li>At least 8 characters</li>
+                    <li>Mix of uppercase and lowercase letters</li>
+                    <li>At least one number</li>
+                    <li>At least one special character</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="button-group">
+              <button type="submit" class="btn-save">
+                <i class="fas fa-key"></i> Update Password
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Notifications Panel -->
+      <div id="notifications-panel" class="settings-panel">
+        <div class="settings-section">
+          <h2><i class="fas fa-bell"></i> Notification Preferences</h2>
+          <div id="notifications-alert"></div>
+
+          <form id="notifications-form">
+            <div class="settings-field">
+              <label for="alert-email">Alert Email Address</label>
+              <input type="email" id="alert-email" placeholder="your@email.com" />
+              <small>Email address for alert notifications</small>
+            </div>
+
+            <div class="settings-field">
+              <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal;">
+                <input type="checkbox" id="email-alerts" />
+                <span>Enable Email Alerts</span>
+              </label>
+              <small>Receive notifications about low stock and forecasts via email</small>
+            </div>
+
+            <div class="settings-field">
+              <label for="alert-phone">Phone Number (SMS)</label>
+              <input type="tel" id="alert-phone" placeholder="+1234567890" />
+              <small>For SMS alerts (E.164 format: +1-555-0123)</small>
+            </div>
+
+            <div class="settings-field">
+              <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal;">
+                <input type="checkbox" id="sms-alerts" />
+                <span>Enable SMS Alerts</span>
+              </label>
+              <small>Receive urgent notifications via SMS</small>
+            </div>
+
+            <div class="settings-field">
+              <label for="alert-threshold">Low Stock Alert Threshold (%)</label>
+              <input type="number" id="alert-threshold" min="5" max="100" value="20" />
+              <small>Alert when stock falls below this percentage of reorder point</small>
+            </div>
+
+            <div class="button-group">
+              <button type="submit" class="btn-save">
+                <i class="fas fa-save"></i> Save Preferences
+              </button>
+              <button type="button" class="btn-cancel" onclick="testAlertNotification()">
+                <i class="fas fa-envelope"></i> Send Test Email
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Danger Zone Panel -->
+      <div id="account-panel" class="settings-panel">
+        <div class="settings-section">
+          <h2><i class="fas fa-exclamation-triangle"></i> Danger Zone</h2>
+          <p style="color: #F44336; font-weight: bold;">These actions are irreversible. Please proceed with caution.</p>
+
+          <h3>Delete Account</h3>
+          <p>Once you delete your account, there is no going back. Please be certain.</p>
+          <button class="btn-danger" onclick="confirmDeleteAccount()">
+            <i class="fas fa-trash"></i> Delete My Account
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='settings.js') }}"></script>
+</body>
+</html>

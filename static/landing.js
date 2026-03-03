@@ -286,6 +286,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Display location banner (this will call loadFromStorage and updateLocationDisplay)
     displayLocationInfo();
     
+    // Update navigation links with location data
+    updateNavigationLinks();
+    
     // Check if location is already set - use the already-loaded data
     if (!locationService.country) {
         console.log('⚠️ No location set, will show modal');
@@ -297,3 +300,45 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('✅ Location already set:', locationService.country, locationService.units);
     }
 });
+
+// Update navigation links to include location parameters
+function updateNavigationLinks() {
+    const country = locationService.country;
+    if (!country) return;
+    
+    const city = (locationService.location && locationService.location.city) || '';
+    const params = `?country=${country}${city ? '&city=' + encodeURIComponent(city) : ''}`;
+    
+    // Update Sign In link
+    const signInLink = document.querySelector('a[href*="/login"]');
+    if (signInLink) {
+        const href = signInLink.getAttribute('href');
+        if (href.includes('simple=1')) {
+            signInLink.setAttribute('href', `/login${params}&simple=1`);
+        } else {
+            signInLink.setAttribute('href', `/login${params}`);
+        }
+    }
+    
+    // Update Sign Up link
+    const signUpLink = document.querySelector('a[href*="/signup"]');
+    if (signUpLink) {
+        const href = signUpLink.getAttribute('href');
+        if (href.includes('simple=1')) {
+            signUpLink.setAttribute('href', `/signup${params}&simple=1`);
+        } else {
+            signUpLink.setAttribute('href', `/signup${params}`);
+        }
+    }
+    
+    // Update Guest link
+    const guestLink = document.querySelector('a[href*="/guest-login"]');
+    if (guestLink) {
+        const href = guestLink.getAttribute('href');
+        if (href.includes('simple=1')) {
+            guestLink.setAttribute('href', `/guest-login${params}&simple=1`);
+        } else {
+            guestLink.setAttribute('href', `/guest-login${params}`);
+        }
+    }
+}

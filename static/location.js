@@ -659,7 +659,11 @@ function showLocationModal() {
       if (typeof updateLocationDisplay === 'function') {
         updateLocationDisplay();
       }
-      location.reload(); // Reload to apply changes
+      // Update navigation links with location
+      if (typeof updateNavigationLinks === 'function') {
+        updateNavigationLinks();
+      }
+      // NO location.reload() - just close the modal and let user continue
     } catch (error) {
       console.error('Location request failed:', error);
       btn.innerHTML = originalText;
@@ -689,9 +693,13 @@ function showLocationModal() {
     if (typeof updateLocationDisplay === 'function') {
       updateLocationDisplay();
     }
-
-    // Reload page to apply changes everywhere
-    location.reload();
+    
+    // Update navigation links with location
+    if (typeof updateNavigationLinks === 'function') {
+      updateNavigationLinks();
+    }
+    
+    // NO location.reload() - just close the modal and let user continue
   }
 
   // Save manual selection button

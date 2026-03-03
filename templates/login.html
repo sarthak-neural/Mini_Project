@@ -53,6 +53,12 @@
           {% if simple_session %}
           <input type="hidden" name="simple_session" value="1" />
           {% endif %}
+          {% if country %}
+          <input type="hidden" name="country" value="{{ country }}" />
+          {% endif %}
+          {% if city %}
+          <input type="hidden" name="city" value="{{ city }}" />
+          {% endif %}
           <div class="form-group">
             <label for="email">
               <i class="fas fa-envelope"></i> Email Address
@@ -102,7 +108,7 @@
               <input type="checkbox" id="rememberMe" name="remember" />
               <span>Remember me</span>
             </label>
-            <a href="#" class="forgot-link">Forgot password?</a>
+            <a href="/password-recovery" class="forgot-link">Forgot password?</a>
           </div>
 
           <button type="submit" class="btn btn-primary btn-block btn-large">

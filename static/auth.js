@@ -109,5 +109,68 @@ document.querySelectorAll('.btn-social').forEach(btn => {
     });
 });
 
+// Attach location data to form hidden inputs
+function attachLocationToForm(formId) {
+    const form = document.getElementById(formId);
+    if (!form) return;
+    
+    // Check if location is already in hidden inputs (from URL redirect)
+    const existingCountry = form.querySelector('input[name="country"]');
+    if (existingCountry && existingCountry.value) {
+        console.log('✅ Location already in form from URL:', existingCountry.value);
+        return;
+    }
+    
+    try {
+        // Get location data from localStorage via locationService
+        const storedData = localStorage.getItem('userLocation');
+        if (storedData) {
+            const locationData = JSON.parse(storedData);
+            
+            if (locationData.country || (locationData.location && locationData.location.country)) {
+                const country = locationData.country || locationData.location.country;
+                // Add country hidden input
+                const countryInput = document.createElement('input');
+                countryInput.type = 'hidden';
+                countryInput.name = 'country';
+                countryInput.value = country;
+                form.appendChild(countryInput);
+                console.log('✅ Attached country to form from localStorage:', country);
+            }
+            
+            if (locationData.location && locationData.location.city) {
+                // Add city hidden input
+                const cityInput = document.createElement('input');
+                cityInput.type = 'hidden';
+                cityInput.name = 'city';
+                cityInput.value = locationData.location.city;
+                form.appendChild(cityInput);
+            }
+            
+            if (locationData.location && locationData.location.latitude) {
+                // Add latitude hidden input
+                const latInput = document.createElement('input');
+                latInput.type = 'hidden';
+                latInput.name = 'latitude';
+                latInput.value = locationData.location.latitude;
+                form.appendChild(latInput);
+            }
+            
+            if (locationData.location && locationData.location.longitude) {
+                // Add longitude hidden input
+                const lngInput = document.createElement('input');
+                lngInput.type = 'hidden';
+                lngInput.name = 'longitude';
+                lngInput.value = locationData.location.longitude;
+                form.appendChild(lngInput);
+            }
+        } else {
+            console.log('ℹ️ No location data found in localStorage');
+        }
+    } catch (error) {
+        console.error('Error attaching location to form:', error);
+    }
+}
+
 // Initialize remember me on DOM ready
 document.addEventListener('DOMContentLoaded', initRememberMe);

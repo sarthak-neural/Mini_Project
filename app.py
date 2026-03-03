@@ -4,6 +4,8 @@ import os
 from datetime import datetime, timedelta
 from functools import wraps
 from dotenv import load_dotenv
+# from flask_limiter import Limiter
+# from flask_limiter.util import get_remote_address
 from model import (forecast_demand, optimize_inventory, generate_alerts, 
                    calculate_error_metrics, generate_training_predictions, 
                    calculate_confidence_intervals)
@@ -20,7 +22,7 @@ app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-change-in-production')
 
 # Database configuration
 database_url = os.getenv('DATABASE_URL', 'sqlite:///restaurant_ai.db')
-# Handle SQLite URIs
+# Only modify SQLite URIs, leave PostgreSQL URIs as-is
 if database_url.startswith('sqlite'):
     database_url = database_url.replace('sqlite:///', f'sqlite:///{os.path.dirname(os.path.abspath(__file__))}/')
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
@@ -200,7 +202,10 @@ def login():
         else:
             return render_template("login.html", error="Invalid credentials or login type")
     
-    return render_template("login.html", simple_session=is_simple_browser_request())
+    # GET request - pass URL parameters to template
+    country = request.args.get('country')
+    city = request.args.get('city')
+    return render_template("login.html", simple_session=is_simple_browser_request(), country=country, city=city)
 
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
@@ -282,7 +287,10 @@ def signup():
         
         return redirect(url_for('dashboard'))
     
-    return render_template("signup.html", simple_session=is_simple_browser_request())
+    # GET request - pass URL parameters to template
+    country = request.args.get('country')
+    city = request.args.get('city')
+    return render_template("signup.html", simple_session=is_simple_browser_request(), country=country, city=city)
 
 @app.route("/logout")
 def logout():
@@ -325,7 +333,23 @@ def guest_login():
     session['restaurant'] = demo_user.restaurant_name
     session['role'] = demo_user.role or 'staff'
     
-    if demo_user.location:
+    # Check if user provided location from landing page
+    country = request.args.get('country') or request.form.get('country')
+    city = request.args.get('city') or request.form.get('city')
+    
+    # If country was specified, update demo user's location
+    if country:
+        if not demo_user.location:
+            demo_user.location = Location(user_id=demo_user.id)
+            db.session.add(demo_user.location)
+        
+        demo_user.location.country = country
+        demo_user.location.city = city or ''
+        demo_user.location.set_units(UNIT_STANDARDS.get(country, UNIT_STANDARDS.get('US', {})))
+        db.session.commit()
+        session['location'] = demo_user.location.to_dict()
+        session['units'] = demo_user.location.get_units()
+    elif demo_user.location:
         session['location'] = demo_user.location.to_dict()
         session['units'] = demo_user.location.get_units()
     else:
@@ -516,20 +540,28 @@ def result():
 
     # Check if alert should be sent for low stock
     alerts_sent = []
-    user = session.get('user')
-    if user and user in users_db:
-        user_data = users_db[user]
-        alert_prefs = user_data.get('alert_preferences', {})
-        
-        # Send low stock alert if stock is below reorder point
-        if current_stock < decision['reorder_point']:
-            alerts_sent = alert_manager.send_low_stock_alert(
-                user_data,
-                ingredient,
-                current_stock,
-                decision['reorder_point'],
-                alert_prefs
-            )
+    user_email = session.get('user')
+    if user_email:
+        user = User.query.filter_by(email=user_email).first()
+        if user:
+            alert_prefs = {}
+            for pref in user.alert_preferences:
+                if pref.ingredient == ingredient:
+                    alert_prefs = {
+                        'min_stock': pref.min_stock_level,
+                        'enabled': pref.enabled
+                    }
+                    break
+            
+            # Send low stock alert if stock is below reorder point
+            if current_stock < decision['reorder_point']:
+                alerts_sent = alert_manager.send_low_stock_alert(
+                    {'email': user.email, 'name': user.get_full_name()},
+                    ingredient,
+                    current_stock,
+                    decision['reorder_point'],
+                    alert_prefs
+                )
 
     return render_template(
         "result.html",
@@ -897,17 +929,21 @@ def get_country_from_coordinates():
                 break
         
         # Update user's location and units if logged in
-        user = session.get('user')
-        if user and user in users_db:
-            users_db[user]['location'] = {
-                'latitude': latitude,
-                'longitude': longitude,
-                'country': detected_country,
-                'city': ''  # Would be populated by reverse geocoding service
-            }
-            users_db[user]['units'] = UNIT_STANDARDS.get(detected_country, UNIT_STANDARDS['US'])
-            session['location'] = users_db[user]['location']
-            session['units'] = users_db[user]['units']
+        user_email = session.get('user')
+        if user_email:
+            user = User.query.filter_by(email=user_email).first()
+            if user:
+                if not user.location:
+                    user.location = Location(user_id=user.id)
+                user.location.country = detected_country
+                user.location.latitude = latitude
+                user.location.longitude = longitude
+                user.location.weight_unit = UNIT_STANDARDS.get(detected_country, UNIT_STANDARDS['US']).get('weight', 'kg')
+                user.location.volume_unit = UNIT_STANDARDS.get(detected_country, UNIT_STANDARDS['US']).get('volume', 'ml')
+                user.location.currency = UNIT_STANDARDS.get(detected_country, UNIT_STANDARDS['US']).get('currency', 'USD')
+                db.session.commit()
+                session['location'] = user.location.to_dict()
+                session['units'] = user.location.get_units()
         
         return jsonify({
             "success": True,
@@ -924,17 +960,18 @@ def get_country_from_coordinates():
 
 @login_required
 @app.route("/api/user/location", methods=["GET"])
+@login_required
 def get_user_location():
     """Get user's location and unit settings"""
     try:
-        user = session.get('user')
-        if user and user in users_db:
-            return jsonify({
-                "success": True,
-                "location": users_db[user].get('location', {}),
-                "units": users_db[user].get('units', UNIT_STANDARDS.get('US', {}))
-            })
-        return jsonify({"success": False, "error": "User not found"}), 404
+        # Get from session first (faster)
+        location_data = session.get('location', {})
+        units_data = session.get('units', UNIT_STANDARDS.get('US', {}))
+        return jsonify({
+            "success": True,
+            "location": location_data,
+            "units": units_data
+        })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -1007,9 +1044,16 @@ def add_sale():
 def get_alert_preferences():
     """Get user's alert preferences"""
     try:
-        user = session.get('user')
-        if user and user in users_db:
-            prefs = users_db[user].get('alert_preferences', {})
+        user_email = session.get('user')
+        user = User.query.filter_by(email=user_email).first()
+        if user:
+            prefs = {}
+            for pref in user.alert_preferences:
+                prefs[pref.ingredient] = {
+                    'min_stock': pref.min_stock_level,
+                    'max_stock': pref.max_stock_level,
+                    'enabled': pref.enabled
+                }
             return jsonify({
                 "success": True,
                 "preferences": prefs,
@@ -1027,25 +1071,44 @@ def get_alert_preferences():
 def update_alert_preferences():
     """Update user's alert preferences"""
     try:
-        user = session.get('user')
+        user_email = session.get('user')
+        user = User.query.filter_by(email=user_email).first()
         data = request.get_json()
         
-        if user and user in users_db:
-            users_db[user]['alert_preferences'] = {
-                'email_enabled': data.get('email_enabled', False),
-                'sms_enabled': data.get('sms_enabled', False),
-                'phone_number': data.get('phone_number', ''),
-                'alert_threshold_percentage': int(data.get('alert_threshold_percentage', 20))
-            }
+        if user:
+            # Clear existing preferences
+            AlertPreference.query.filter_by(user_id=user.id).delete()
+            
+            # Add new preferences from request
+            ingredients = data.get('ingredients', [])
+            for ing_data in ingredients:
+                pref = AlertPreference(
+                    user_id=user.id,
+                    ingredient=ing_data.get('ingredient'),
+                    min_stock_level=float(ing_data.get('min_stock', 0)),
+                    max_stock_level=float(ing_data.get('max_stock', 1000)),
+                    enabled=ing_data.get('enabled', True)
+                )
+                db.session.add(pref)
             
             # Update email if provided
             if data.get('email'):
-                users_db[user]['email'] = data.get('email')
+                user.email = data.get('email')
+            
+            db.session.commit()
+            
+            prefs = {}
+            for pref in user.alert_preferences:
+                prefs[pref.ingredient] = {
+                    'min_stock': pref.min_stock_level,
+                    'max_stock': pref.max_stock_level,
+                    'enabled': pref.enabled
+                }
             
             return jsonify({
                 "success": True,
                 "message": "Alert preferences updated successfully",
-                "preferences": users_db[user]['alert_preferences']
+                "preferences": prefs
             })
         return jsonify({"success": False, "error": "User not found"}), 404
     except Exception as e:
@@ -1056,18 +1119,17 @@ def update_alert_preferences():
 def test_alert():
     """Send a test alert to verify configuration"""
     try:
-        user = session.get('user')
+        user_email = session.get('user')
+        user = User.query.filter_by(email=user_email).first()
         data = request.get_json()
         channel = data.get('channel', 'email')  # 'email' or 'sms'
         
-        if user and user in users_db:
-            user_data = users_db[user]
-            
+        if user:
             if channel == 'email':
-                contact = user_data.get('email')
+                contact = user.email
                 success = alert_manager.test_alert(contact, 'email')
             elif channel == 'sms':
-                contact = user_data['alert_preferences'].get('phone_number')
+                contact = user.phone_number if hasattr(user, 'phone_number') else None
                 success = alert_manager.test_alert(contact, 'sms')
             else:
                 return jsonify({"success": False, "error": "Invalid channel"}), 400
@@ -1092,20 +1154,27 @@ def test_alert():
 def check_stock_and_alert():
     """Check stock levels and send alerts if needed"""
     try:
-        user = session.get('user')
+        user_email = session.get('user')
+        user = User.query.filter_by(email=user_email).first()
         data = request.get_json()
         ingredient = data.get('ingredient')
         current_stock = float(data.get('current_stock', 0))
         reorder_point = float(data.get('reorder_point', 0))
         
-        if user and user in users_db:
-            user_data = users_db[user]
-            alert_prefs = user_data.get('alert_preferences', {})
+        if user:
+            alert_prefs = {}
+            for pref in user.alert_preferences:
+                if pref.ingredient == ingredient:
+                    alert_prefs = {
+                        'min_stock': pref.min_stock_level,
+                        'enabled': pref.enabled
+                    }
+                    break
             
             # Check if alert should be sent
             if current_stock < reorder_point:
                 alerts_sent = alert_manager.send_low_stock_alert(
-                    user_data,
+                    {'email': user.email, 'name': user.get_full_name()},
                     ingredient,
                     current_stock,
                     reorder_point,
@@ -1128,6 +1197,276 @@ def check_stock_and_alert():
         return jsonify({"success": False, "error": "User not found"}), 404
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ===== SETTINGS ROUTES =====
+
+@app.route("/settings")
+@login_required
+def settings():
+    """User settings page"""
+    return render_template("settings.html", user=session.get('name'), restaurant=session.get('restaurant'))
+
+
+@app.route("/api/user/profile", methods=["GET", "POST"])
+@login_required
+def user_profile():
+    """Get or update user profile"""
+    try:
+        user = User.query.filter_by(email=session.get('user')).first()
+        if not user:
+            return jsonify({"success": False, "error": "User not found"}), 404
+
+        if request.method == "GET":
+            return jsonify({
+                "success": True,
+                "user": {
+                    "email": user.email,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "restaurant_name": user.restaurant_name,
+                    "role": user.role
+                }
+            })
+
+        elif request.method == "POST":
+            data = request.get_json()
+            user.first_name = data.get('first_name', user.first_name)
+            user.last_name = data.get('last_name', user.last_name)
+            user.restaurant_name = data.get('restaurant_name', user.restaurant_name)
+            user.updated_at = datetime.utcnow()
+            db.session.commit()
+
+            # Update session
+            session['name'] = user.get_full_name()
+            session['restaurant'] = user.restaurant_name
+
+            return jsonify({"success": True, "message": "Profile updated successfully"})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/user/change-password", methods=["POST"])
+@login_required
+def change_password():
+    """Change user password"""
+    try:
+        data = request.get_json()
+        current_password = data.get('current_password')
+        new_password = data.get('new_password')
+
+        user = User.query.filter_by(email=session.get('user')).first()
+        if not user:
+            return jsonify({"success": False, "error": "User not found"}), 404
+
+        # Verify current password
+        if not user.check_password(current_password):
+            return jsonify({"success": False, "error": "Current password is incorrect"}), 401
+
+        # Validate new password
+        password_regex = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$'
+        if not __import__('re').match(password_regex, new_password):
+            return jsonify({
+                "success": False,
+                "error": "Password must be at least 8 characters with uppercase, lowercase, number, and special character"
+            }), 400
+
+        # Update password
+        user.set_password(new_password)
+        user.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        return jsonify({"success": True, "message": "Password changed successfully"})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/user/delete-account", methods=["POST"])
+@login_required
+def delete_account():
+    """Delete user account and all associated data"""
+    try:
+        user = User.query.filter_by(email=session.get('user')).first()
+        if not user:
+            return jsonify({"success": False, "error": "User not found"}), 404
+
+        # Delete all user data
+        db.session.delete(user)
+        db.session.commit()
+
+        # Clear session and redirect to logout
+        session.clear()
+
+        return jsonify({"success": True, "message": "Account deleted successfully"})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ===== PASSWORD RECOVERY ROUTES =====
+
+# limiter = Limiter(
+#     app=app,
+#     key_func=get_remote_address,
+#     default_limits=["200 per day", "50 per hour"]
+# )
+
+
+def generate_recovery_token(email):
+    """Generate a 6-digit recovery token"""
+    import random
+    return str(random.randint(100000, 999999))
+
+
+def store_recovery_token(email, token):
+    """Store recovery token temporarily (in session or cache)"""
+    if 'recovery_tokens' not in app.config:
+        app.config['recovery_tokens'] = {}
+    app.config['recovery_tokens'][email] = {
+        'token': token,
+        'timestamp': datetime.utcnow(),
+        'expires_in': 3600  # 1 hour
+    }
+
+
+def verify_recovery_token(email, token):
+    """Verify recovery token"""
+    if 'recovery_tokens' not in app.config:
+        return False
+    
+    stored = app.config['recovery_tokens'].get(email)
+    if not stored:
+        return False
+    
+    if datetime.utcnow() - stored['timestamp'] > timedelta(seconds=stored['expires_in']):
+        return False
+    
+    return stored['token'] == token
+
+
+@app.route("/password-recovery")
+def password_recovery():
+    """Password recovery page"""
+    return render_template("password_recovery.html")
+
+
+@app.route("/api/auth/request-recovery-code", methods=["POST"])
+# @limiter.limit("3 per hour")
+def request_recovery_code():
+    """Request password recovery code"""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').lower().strip()
+
+        if not email:
+            return jsonify({"success": False, "error": "Email is required"}), 400
+
+        # Check if user exists
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            # Don't reveal if email exists for security
+            return jsonify({"success": True, "message": "If email exists, recovery code will be sent"}), 200
+
+        # Generate and store recovery token
+        token = generate_recovery_token(email)
+        store_recovery_token(email, token)
+
+        # Send email with recovery code
+        try:
+            from flask_mail import Message, Mail
+            mail = Mail(app)
+            msg = Message(
+                subject="Password Recovery Code",
+                recipients=[email],
+                body=f"""
+Hello {user.get_full_name()},
+
+Your password recovery code is: {token}
+
+This code will expire in 1 hour.
+
+If you didn't request this, please ignore this email.
+
+Best regards,
+Restaurant Inventory AI Team
+                """
+            )
+            mail.send(msg)
+        except Exception as e:
+            app.logger.error(f"Email error: {e}")
+            # Return success even if email fails (user will see they need to check)
+
+        return jsonify({
+            "success": True,
+            "message": "Recovery code sent to your email"
+        })
+
+    except Exception as e:
+        app.logger.error(f"Recovery code error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/auth/verify-recovery-code", methods=["POST"])
+# @limiter.limit("10 per hour")
+def verify_recovery_code():
+    """Verify password recovery code"""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').lower().strip()
+        code = data.get('code', '').strip()
+
+        if not email or not code:
+            return jsonify({"success": False, "error": "Email and code are required"}), 400
+
+        if verify_recovery_token(email, code):
+            return jsonify({"success": True, "message": "Code verified successfully"})
+        else:
+            return jsonify({"success": False, "error": "Invalid or expired code"}), 401
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/auth/reset-password", methods=["POST"])
+# @limiter.limit("5 per hour")
+def reset_password():
+    """Reset password with verified code"""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').lower().strip()
+        new_password = data.get('new_password')
+
+        if not email or not new_password:
+            return jsonify({"success": False, "error": "Email and password are required"}), 400
+
+        # Validate password
+        password_regex = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$'
+        if not __import__('re').match(password_regex, new_password):
+            return jsonify({
+                "success": False,
+                "error": "Password must be at least 8 characters with uppercase, lowercase, number, and special character"
+            }), 400
+
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({"success": False, "error": "User not found"}), 404
+
+        # Update password
+        user.set_password(new_password)
+        user.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        # Clean up recovery token
+        if 'recovery_tokens' in app.config and email in app.config['recovery_tokens']:
+            del app.config['recovery_tokens'][email]
+
+        return jsonify({"success": True, "message": "Password reset successfully"})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 
 if __name__ == "__main__":
     app.run(debug=True, host='0.0.0.0', port=5000)

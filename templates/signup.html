@@ -62,6 +62,12 @@
           {% if simple_session %}
           <input type="hidden" name="simple_session" value="1" />
           {% endif %}
+          {% if country %}
+          <input type="hidden" name="country" value="{{ country }}" />
+          {% endif %}
+          {% if city %}
+          <input type="hidden" name="city" value="{{ city }}" />
+          {% endif %}
           <div class="form-row-2">
             <div class="form-group">
               <label for="first_name">
