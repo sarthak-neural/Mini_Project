@@ -10,16 +10,13 @@ import sys
 from datetime import datetime, timedelta
 import tempfile
 
-# Fix import conflict between app.py and app/ directory
-# Import from app.py file specifically
-import importlib.util
-spec = importlib.util.spec_from_file_location("app_module", os.path.join(os.path.dirname(__file__), "app.py"))
-app_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(app_module)
+# Add current directory to path to ensure imports work
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-# Extract what we need from app.py
+# Import from app.py (not app/ directory)
+import app as app_module
 app = app_module.app
-db = app_module.db
+db = app_module.db  
 User = app_module.User
 Location = app_module.Location
 SalesRecord = app_module.SalesRecord

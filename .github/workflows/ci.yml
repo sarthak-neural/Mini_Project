@@ -95,7 +95,7 @@ jobs:
           DATABASE_URL: postgresql://test_user:test_pass@localhost:5432/test_db
           FLASK_ENV: testing
         run: |
-          pytest --cov=app --cov-report=xml --cov-report=html
+          pytest tests.py -v --cov=. --cov-report=xml --cov-report=html
       
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
