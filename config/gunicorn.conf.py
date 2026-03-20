@@ -1,8 +1,9 @@
 """
 Gunicorn production server configuration.
-Optimized for production deployment with multiple workers.
+
+Defaults are tuned for small hosted instances (e.g., Render free/starter)
+where ML dependencies make each worker memory-heavy.
 """
-import multiprocessing
 import os
 
 # Server socket
@@ -10,13 +11,16 @@ bind = f"0.0.0.0:{os.getenv('PORT', '5000')}"
 backlog = 2048
 
 # Worker processes
-workers = int(os.getenv('GUNICORN_WORKERS', multiprocessing.cpu_count() * 2 + 1))
+# Use one worker by default to avoid OOM restarts with heavy ML imports.
+workers = int(os.getenv('GUNICORN_WORKERS', '1'))
 worker_class = 'sync'  # Use 'gevent' or 'eventlet' for async
 worker_connections = 1000
 max_requests = 1000  # Recycle workers after this many requests
 max_requests_jitter = 50
-timeout = 30
+timeout = int(os.getenv('GUNICORN_TIMEOUT', '120'))
+graceful_timeout = int(os.getenv('GUNICORN_GRACEFUL_TIMEOUT', '30'))
 keepalive = 2
+preload_app = False
 
 # Process naming
 proc_name = 'restaurant_ai'
