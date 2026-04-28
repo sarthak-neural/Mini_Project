@@ -135,7 +135,7 @@ inventory_ai_project/
 
 ```bash
 # 1. Clone the repository
-cd Restaurant
+cd MINI_PROJECT
 
 # 2. Create virtual environment
 python -m venv .venv
@@ -154,7 +154,8 @@ copy .env.example .env
 # Edit .env with your settings (optional for basic use)
 
 # 6. Run the application
-python inventory_ai_project/app.py
+python MINI_PROJECT/app.py
+python app.py                             # if you are already in the root directory
 
 # 7. Open browser
 # Visit: http://127.0.0.1:5000
