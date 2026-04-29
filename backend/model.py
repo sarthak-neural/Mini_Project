@@ -534,12 +534,14 @@ def optimize_inventory(
 
     reorder_point = demand_during_lead + safety_stock
     order_qty = max(0, reorder_point - current_stock)
+    reorder_needed = order_qty > 0
 
     return {
         "demand_during_lead": round(demand_during_lead, 2),
         "safety_stock": round(safety_stock, 2),
         "reorder_point": round(reorder_point, 2),
         "recommended_order": round(order_qty, 2),
+        "reorder_needed": reorder_needed,
         "current_stock": round(current_stock, 2),
     }
 
