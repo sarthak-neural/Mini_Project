@@ -28,6 +28,123 @@ except ImportError:
     LSTM_AVAILABLE = False
 
 
+def prepare_daily_sales_series(ingredient_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Aggregate sales by day and fill missing dates with zeros.
+
+    Returns a DataFrame with columns: date, quantity_sold
+    """
+    if ingredient_df is None or ingredient_df.empty:
+        return pd.DataFrame(columns=["date", "quantity_sold"])
+
+    working_df = ingredient_df.copy()
+    working_df["date"] = pd.to_datetime(working_df["date"], errors="coerce").dt.normalize()
+    working_df = working_df.dropna(subset=["date"])
+
+    if working_df.empty:
+        return pd.DataFrame(columns=["date", "quantity_sold"])
+
+    daily_series = (
+        working_df.groupby("date")["quantity_sold"]
+        .sum()
+        .sort_index()
+        .asfreq("D", fill_value=0)
+    )
+
+    return pd.DataFrame({
+        "date": daily_series.index,
+        "quantity_sold": daily_series.values
+    })
+
+
+def _sanitize_forecast_result(result):
+    if not result:
+        return None
+
+    predictions = result.get("predictions") or []
+    if predictions:
+        sanitized = [max(0.0, float(value)) for value in predictions]
+        result["predictions"] = sanitized
+        result["daily"] = float(np.mean(sanitized)) if sanitized else 0.0
+        result["weekly"] = _weekly_total(sanitized)
+
+    if result.get("lower_bound") is not None:
+        result["lower_bound"] = [max(0.0, float(value)) for value in result["lower_bound"]]
+
+    if result.get("upper_bound") is not None:
+        result["upper_bound"] = [max(0.0, float(value)) for value in result["upper_bound"]]
+
+    return result
+
+
+def _weekly_total(predictions):
+    if not predictions:
+        return 0.0
+    window = min(7, len(predictions))
+    return float(np.sum(predictions[:window]))
+
+
+def _ensure_forecast_length(result: dict, periods: int) -> dict:
+    predictions = list(result.get("predictions") or [])
+    if periods <= 0:
+        result["predictions"] = []
+        result["daily"] = 0.0
+        result["weekly"] = 0.0
+        return result
+
+    fallback_value = float(result.get("daily", 0.0))
+
+    if len(predictions) < periods:
+        predictions.extend([fallback_value] * (periods - len(predictions)))
+    elif len(predictions) > periods:
+        predictions = predictions[:periods]
+
+    predictions = [max(0.0, float(value)) for value in predictions]
+    result["predictions"] = predictions
+    result["daily"] = float(np.mean(predictions)) if predictions else 0.0
+    result["weekly"] = _weekly_total(predictions)
+
+    for bound_key in ("upper_bound", "lower_bound"):
+        bound_values = result.get(bound_key)
+        if bound_values is None:
+            continue
+
+        bound_values = list(bound_values)
+        if len(bound_values) < periods:
+            pad_value = float(bound_values[-1]) if bound_values else fallback_value
+            bound_values.extend([pad_value] * (periods - len(bound_values)))
+        elif len(bound_values) > periods:
+            bound_values = bound_values[:periods]
+
+        if bound_key == "lower_bound":
+            bound_values = [max(0.0, float(value)) for value in bound_values]
+        else:
+            bound_values = [max(0.0, float(value)) for value in bound_values]
+
+        result[bound_key] = bound_values
+
+    return result
+
+
+def forecast_seasonal_naive(sales_data, periods=7, seasonal_period=7):
+    """
+    Seasonal naive forecast: repeats the last seasonal window.
+    """
+    if len(sales_data) < seasonal_period:
+        return None
+
+    last_window = np.array(sales_data[-seasonal_period:], dtype=float)
+    repeats = int(ceil(periods / seasonal_period))
+    predictions = np.tile(last_window, repeats)[:periods].tolist()
+
+    return {
+        'daily': float(np.mean(predictions)),
+        'weekly': float(np.sum(predictions)),
+        'predictions': predictions,
+        'confidence': 0.70
+    }
+
+
 def forecast_arima(sales_data, periods=7):
     """
     ARIMA forecasting model with auto-tuning.
@@ -196,7 +313,7 @@ def forecast_moving_average(sales_data, window=7, periods=7):
     predictions = [float(avg_daily)] * periods
     return {
         'daily': float(avg_daily),
-        'weekly': float(avg_daily * 7),
+        'weekly': float(avg_daily * min(7, periods)),
         'predictions': predictions,
         'confidence': 0.65
     }
@@ -212,90 +329,191 @@ def forecast_demand(ingredient_df: pd.DataFrame, window: int = 7, periods: int =
         window: Window size for moving average (default 7)
         periods: Number of periods to forecast (default 7)
     """
-    ingredient_df = ingredient_df.sort_values("date")
-    sales = ingredient_df["quantity_sold"].values
-    
+    periods = int(periods) if periods else 7
+    if periods <= 0:
+        periods = 7
+
+    prepared_df = prepare_daily_sales_series(ingredient_df)
+    if prepared_df.empty:
+        result = forecast_moving_average(np.array([]), window, periods)
+        result = _sanitize_forecast_result(result)
+        result = _ensure_forecast_length(result, periods)
+        return {
+            "avg_daily": round(result['daily'], 2),
+            "weekly_forecast": round(result['weekly'], 2),
+            "predictions": result['predictions'],
+            "model_used": "Moving Average (No Data)",
+            "confidence": round(result['confidence'] * 100, 1),
+            "selection_reason": "Insufficient data to build a model."
+        }
+
+    sales = prepared_df["quantity_sold"].values.astype(float)
+
     if len(sales) < 5:
         # Not enough data, use simple average
         result = forecast_moving_average(sales, window, periods)
+        result = _sanitize_forecast_result(result)
+        result = _ensure_forecast_length(result, periods)
         return {
             "avg_daily": round(result['daily'], 2),
             "weekly_forecast": round(result['weekly'], 2),
             "predictions": result['predictions'],
             "model_used": "Moving Average (Insufficient Data)",
-            "confidence": result['confidence']
+            "confidence": round(result['confidence'] * 100, 1),
+            "selection_reason": "Insufficient history for validation; using moving average."
         }
-    
-    # Try all available models
-    models = []
-    
-    # Prophet (best for seasonal data)
-    if PROPHET_AVAILABLE and len(ingredient_df) >= 10:
-        prophet_result = forecast_prophet(ingredient_df.copy(), periods)
-        if prophet_result:
-            models.append(('Prophet', prophet_result))
-    
-    # ARIMA (good for trend data)
+
+    def run_candidate(candidate, df, series, horizon):
+        if candidate["uses_df"]:
+            return candidate["fn"](df, horizon)
+        return candidate["fn"](series, horizon)
+
+    def run_moving_average(series, horizon):
+        return forecast_moving_average(series, window, horizon)
+
+    candidates = []
+
+    if PROPHET_AVAILABLE and len(prepared_df) >= 10:
+        candidates.append({
+            "name": "Prophet",
+            "min_points": 10,
+            "uses_df": True,
+            "fn": forecast_prophet
+        })
+
     if ARIMA_AVAILABLE and len(sales) >= 10:
-        arima_result = forecast_arima(sales, periods)
-        if arima_result:
-            models.append(('ARIMA', arima_result))
-    
-    # Exponential Smoothing (balanced approach)
+        candidates.append({
+            "name": "ARIMA",
+            "min_points": 10,
+            "uses_df": False,
+            "fn": forecast_arima
+        })
+
     if ARIMA_AVAILABLE and len(sales) >= 14:
-        es_result = forecast_exponential_smoothing(sales, periods)
-        if es_result:
-            models.append(('Exponential Smoothing', es_result))
-    
-    # LSTM (best for complex patterns, but needs more data)
+        candidates.append({
+            "name": "Exponential Smoothing",
+            "min_points": 14,
+            "uses_df": False,
+            "fn": forecast_exponential_smoothing
+        })
+
     if LSTM_AVAILABLE and len(sales) >= 20:
-        lstm_result = forecast_lstm(sales, periods)
-        if lstm_result:
-            models.append(('LSTM Neural Network', lstm_result))
-    
-    # Always include moving average as baseline
-    ma_result = forecast_moving_average(sales, window, periods)
-    models.append(('Moving Average', ma_result))
-    
-    # Select best model based on confidence and non-negative predictions
-    best_model = None
-    best_confidence = 0
-    
-    for model_name, result in models:
-        if result['daily'] >= 0 and result['confidence'] > best_confidence:
-            best_model = (model_name, result)
-            best_confidence = result['confidence']
-    
-    if best_model:
-        model_name, result = best_model
-        
-        # Calculate confidence intervals if not provided
-        if 'upper_bound' not in result or result['upper_bound'] is None:
-            ci = calculate_confidence_intervals(sales, result['predictions'])
-            result['upper_bound'] = ci['upper']
-            result['lower_bound'] = ci['lower']
-        
-        return {
-            "avg_daily": round(result['daily'], 2),
-            "weekly_forecast": round(result['weekly'], 2),
-            "predictions": result['predictions'],
-            "upper_bound": result.get('upper_bound'),
-            "lower_bound": result.get('lower_bound'),
-            "model_used": model_name,
-            "confidence": round(result['confidence'] * 100, 1)
-        }
-    
-    # Fallback
-    result = forecast_moving_average(sales, window, periods)
-    ci = calculate_confidence_intervals(sales, result['predictions'])
+        candidates.append({
+            "name": "LSTM Neural Network",
+            "min_points": 20,
+            "uses_df": False,
+            "fn": forecast_lstm
+        })
+
+    if len(sales) >= 7:
+        candidates.append({
+            "name": "Seasonal Naive",
+            "min_points": 7,
+            "uses_df": False,
+            "fn": forecast_seasonal_naive
+        })
+
+    candidates.append({
+        "name": "Moving Average",
+        "min_points": 1,
+        "uses_df": False,
+        "fn": run_moving_average
+    })
+
+    validation_size = min(7, max(2, len(sales) // 5))
+    can_validate = len(sales) - validation_size >= 5
+
+    selected_candidate = None
+    validation_metrics = None
+    selection_reason = None
+
+    if can_validate:
+        train_df = prepared_df.iloc[:-validation_size].copy()
+        train_sales = train_df["quantity_sold"].values.astype(float)
+        validation_actual = sales[-validation_size:]
+
+        scored_candidates = []
+        for candidate in candidates:
+            if len(train_sales) < candidate["min_points"]:
+                continue
+
+            result = run_candidate(candidate, train_df, train_sales, validation_size)
+            result = _sanitize_forecast_result(result)
+
+            if not result:
+                continue
+
+            predictions = result.get("predictions") or []
+            if len(predictions) != validation_size:
+                continue
+
+            metrics = calculate_error_metrics(validation_actual, predictions)
+            scored_candidates.append((candidate, metrics))
+
+        if scored_candidates:
+            scored_candidates.sort(key=lambda item: (item[1]["mae"], item[1]["rmse"]))
+            selected_candidate, best_metrics = scored_candidates[0]
+            validation_metrics = {
+                "window_days": int(validation_size),
+                "mae": best_metrics["mae"],
+                "rmse": best_metrics["rmse"],
+            }
+            selection_reason = (
+                f"Selected {selected_candidate['name']} by lowest MAE on last {validation_size} days."
+            )
+
+    result = None
+    if not selected_candidate:
+        best_confidence = -1
+        for candidate in candidates:
+            if len(sales) < candidate["min_points"]:
+                continue
+
+            candidate_result = run_candidate(candidate, prepared_df, sales, periods)
+            candidate_result = _sanitize_forecast_result(candidate_result)
+            if not candidate_result:
+                continue
+
+            confidence = float(candidate_result.get("confidence", 0))
+            if candidate_result.get("daily", 0) >= 0 and confidence > best_confidence:
+                best_confidence = confidence
+                selected_candidate = candidate
+                result = candidate_result
+
+        if not result:
+            selected_candidate = {"name": "Moving Average"}
+            result = forecast_moving_average(sales, window, periods)
+            result = _sanitize_forecast_result(result)
+
+        if not selection_reason:
+            selection_reason = "Selected by highest model confidence (insufficient history for validation)."
+    else:
+        result = run_candidate(selected_candidate, prepared_df, sales, periods)
+        result = _sanitize_forecast_result(result)
+        if not result:
+            selected_candidate = {"name": "Moving Average"}
+            result = forecast_moving_average(sales, window, periods)
+            result = _sanitize_forecast_result(result)
+            if not selection_reason:
+                selection_reason = "Selected moving average fallback due to model error."
+
+    result = _ensure_forecast_length(result, periods)
+
+    if result.get("upper_bound") is None or result.get("lower_bound") is None:
+        ci = calculate_confidence_intervals(sales, result["predictions"])
+        result["upper_bound"] = ci["upper"]
+        result["lower_bound"] = ci["lower"]
+
     return {
         "avg_daily": round(result['daily'], 2),
         "weekly_forecast": round(result['weekly'], 2),
         "predictions": result['predictions'],
-        "upper_bound": ci['upper'],
-        "lower_bound": ci['lower'],
-        "model_used": "Moving Average (Fallback)",
-        "confidence": round(result['confidence'] * 100, 1)
+        "upper_bound": result.get('upper_bound'),
+        "lower_bound": result.get('lower_bound'),
+        "model_used": selected_candidate.get("name", "Moving Average"),
+        "confidence": round(result['confidence'] * 100, 1),
+        "selection_reason": selection_reason,
+        "validation_metrics": validation_metrics
     }
 
 

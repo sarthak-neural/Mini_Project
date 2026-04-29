@@ -20,7 +20,15 @@ from flask import session, request, redirect, url_for, render_template, jsonify,
 from datetime import datetime, timedelta
 from sqlalchemy import text, inspect
 import pandas as pd
-from model import forecast_demand
+from model import (
+    forecast_demand,
+    optimize_inventory,
+    generate_alerts,
+    generate_training_predictions,
+    calculate_error_metrics,
+    calculate_confidence_intervals,
+    prepare_daily_sales_series,
+)
 
 # Load environment variables
 load_dotenv()
@@ -149,6 +157,48 @@ def get_current_user():
     if not user_email:
         return None
     return User.query.filter_by(email=user_email).first()
+
+
+def _normalize_ingredient_name(name):
+    return (name or '').strip().lower()
+
+
+def _get_ingredient_dataframe(ingredient, user=None):
+    """Return historical sales for an ingredient, preferring user data over shared CSV data."""
+    normalized_ingredient = _normalize_ingredient_name(ingredient)
+    if not normalized_ingredient:
+        return pd.DataFrame(columns=["date", "ingredient", "quantity_sold"])
+
+    # 1) Use current user's sales records when available for personalized forecasting.
+    if user:
+        sales_rows = SalesRecord.query.filter_by(user_id=user.id).all()
+        if sales_rows:
+            user_df = pd.DataFrame([
+                {
+                    "date": row.sale_date,
+                    "ingredient": row.ingredient,
+                    "quantity_sold": row.quantity_sold,
+                }
+                for row in sales_rows
+            ])
+
+            user_df["ingredient_norm"] = user_df["ingredient"].astype(str).str.strip().str.lower()
+            user_df = user_df[user_df["ingredient_norm"] == normalized_ingredient].copy()
+            if not user_df.empty:
+                user_df["date"] = pd.to_datetime(user_df["date"])
+                user_df = user_df.sort_values("date")
+                return user_df[["date", "ingredient", "quantity_sold"]]
+
+    # 2) Fallback to shared CSV dataset.
+    df = pd.read_csv(DATA_PATH)
+    df["ingredient_norm"] = df["ingredient"].astype(str).str.strip().str.lower()
+    ingredient_df = df[df["ingredient_norm"] == normalized_ingredient].copy()
+    if ingredient_df.empty:
+        return pd.DataFrame(columns=["date", "ingredient", "quantity_sold"])
+
+    ingredient_df["date"] = pd.to_datetime(ingredient_df["date"])
+    ingredient_df = ingredient_df.sort_values("date")
+    return ingredient_df[["date", "ingredient", "quantity_sold"]]
 
 
 def ensure_database_schema():
@@ -823,6 +873,7 @@ def forecast_page():
 
         user = get_current_user()
         db_ingredients = set()
+        sales_ingredients = set()
         if user:
             db_items = IngredientMaster.query.filter_by(user_id=user.id).all()
             db_ingredients = {
@@ -831,7 +882,14 @@ def forecast_page():
                 if item.ingredient and item.ingredient.strip()
             }
 
-        ingredients = sorted(csv_ingredients.union(db_ingredients))
+            sales_rows = SalesRecord.query.filter_by(user_id=user.id).all()
+            sales_ingredients = {
+                (row.ingredient or '').strip()
+                for row in sales_rows
+                if row.ingredient and row.ingredient.strip()
+            }
+
+        ingredients = sorted(csv_ingredients.union(db_ingredients).union(sales_ingredients))
         return render_template(
             "index.html",
             ingredients=ingredients,
@@ -854,13 +912,34 @@ def result():
     current_stock = float(request.form.get("current_stock", 0))
     lead_time_days = int(request.form.get("lead_time_days", 3))
     service_level = float(request.form.get("service_level", 0.95))
+    days_ahead = int(request.form.get("days_ahead", 7))
 
-    df = pd.read_csv(DATA_PATH)
-    ingredient_df = df[df["ingredient"] == ingredient].copy()
-    ingredient_df["date"] = pd.to_datetime(ingredient_df["date"])
-    ingredient_df = ingredient_df.sort_values("date")
+    if days_ahead not in [7, 14, 30]:
+        days_ahead = 7
 
-    forecast = forecast_demand(ingredient_df)
+    user = get_current_user()
+    ingredient_df = _get_ingredient_dataframe(ingredient, user)
+
+    if ingredient_df.empty:
+        return render_template(
+            "index.html",
+            ingredients=[],
+            error=f"No sales history found for {ingredient}",
+            user=session.get('name'),
+            role=session.get('role', 'manager')
+        )
+
+    sales_df = prepare_daily_sales_series(ingredient_df)
+    if sales_df.empty:
+        return render_template(
+            "index.html",
+            ingredients=[],
+            error=f"No sales history found for {ingredient}",
+            user=session.get('name'),
+            role=session.get('role', 'manager')
+        )
+
+    forecast = forecast_demand(ingredient_df, periods=days_ahead)
     decision = optimize_inventory(
         forecast=forecast,
         current_stock=current_stock,
@@ -869,24 +948,28 @@ def result():
     )
     alerts = generate_alerts(decision)
 
-    chart_labels = ingredient_df["date"].dt.strftime("%Y-%m-%d").tolist()
-    chart_sales = ingredient_df["quantity_sold"].tolist()
+    chart_labels = sales_df["date"].dt.strftime("%Y-%m-%d").tolist()
+    chart_sales = sales_df["quantity_sold"].tolist()
 
-    last_date = ingredient_df["date"].max()
+    last_date = sales_df["date"].max()
     forecast_labels = [
         (last_date + pd.Timedelta(days=i)).strftime("%Y-%m-%d")
-        for i in range(1, 8)
+        for i in range(1, days_ahead + 1)
     ]
-    forecast_values = [forecast["avg_daily"]] * 7
+    forecast_values = list(forecast.get("predictions") or [])
+    if len(forecast_values) < days_ahead:
+        forecast_values.extend([forecast["avg_daily"]] * (days_ahead - len(forecast_values)))
+    elif len(forecast_values) > days_ahead:
+        forecast_values = forecast_values[:days_ahead]
 
     combined_labels = chart_labels + forecast_labels
     historical_series = chart_sales + [None] * len(forecast_values)
     forecast_series = [None] * len(chart_sales) + forecast_values
 
     # Calculate training predictions for performance comparison
-    sales_array = ingredient_df["quantity_sold"].values
+    sales_array = sales_df["quantity_sold"].values
     model_name = forecast.get("model_used", "Moving Average")
-    training_predictions = generate_training_predictions(sales_array, model_name, ingredient_df)
+    training_predictions = generate_training_predictions(sales_array, model_name, sales_df)
     
     # Calculate error metrics
     error_metrics = calculate_error_metrics(sales_array, training_predictions)
@@ -1136,14 +1219,15 @@ def api_forecast():
         if days_ahead not in [7, 14, 30]:
             return jsonify({"success": False, "error": "days_ahead must be 7, 14, or 30"}), 400
         
-        df = pd.read_csv(DATA_PATH)
-        ingredient_df = df[df["ingredient"] == ingredient].copy()
+        user = get_current_user()
+        ingredient_df = _get_ingredient_dataframe(ingredient, user)
         
         if ingredient_df.empty:
             return jsonify({"success": False, "error": f"No data found for {ingredient}"}), 404
-        
-        ingredient_df["date"] = pd.to_datetime(ingredient_df["date"])
-        ingredient_df = ingredient_df.sort_values("date")
+
+        sales_df = prepare_daily_sales_series(ingredient_df)
+        if sales_df.empty:
+            return jsonify({"success": False, "error": f"No data found for {ingredient}"}), 404
         
         # Generate forecast with specified time horizon
         forecast = forecast_demand(ingredient_df, periods=days_ahead)
@@ -1156,14 +1240,31 @@ def api_forecast():
         alerts = generate_alerts(decision)
         
         # Chart data
-        chart_labels = ingredient_df["date"].dt.strftime("%Y-%m-%d").tolist()
-        chart_sales = ingredient_df["quantity_sold"].tolist()
+        chart_labels = sales_df["date"].dt.strftime("%Y-%m-%d").tolist()
+        chart_sales = sales_df["quantity_sold"].tolist()
         
-        last_date = ingredient_df["date"].max()
+        last_date = sales_df["date"].max()
         forecast_labels = [
             (last_date + pd.Timedelta(days=i)).strftime("%Y-%m-%d")
             for i in range(1, days_ahead + 1)
         ]
+
+        forecast_values = list(forecast.get("predictions") or [])
+        if len(forecast_values) < days_ahead:
+            forecast_values.extend([forecast["avg_daily"]] * (days_ahead - len(forecast_values)))
+        elif len(forecast_values) > days_ahead:
+            forecast_values = forecast_values[:days_ahead]
+
+        upper_bound = list(forecast.get("upper_bound") or [])
+        lower_bound = list(forecast.get("lower_bound") or [])
+        if len(upper_bound) < days_ahead:
+            upper_bound.extend([upper_bound[-1]] * (days_ahead - len(upper_bound)) if upper_bound else [])
+        if len(lower_bound) < days_ahead:
+            lower_bound.extend([lower_bound[-1]] * (days_ahead - len(lower_bound)) if lower_bound else [])
+        if len(upper_bound) > days_ahead:
+            upper_bound = upper_bound[:days_ahead]
+        if len(lower_bound) > days_ahead:
+            lower_bound = lower_bound[:days_ahead]
         
         return jsonify({
             "success": True,
@@ -1175,9 +1276,9 @@ def api_forecast():
             "chart_data": {
                 "labels": chart_labels + forecast_labels,
                 "historical": chart_sales + [None] * len(forecast_labels),
-                "forecast": [None] * len(chart_sales) + forecast.get("predictions", [forecast["avg_daily"]] * days_ahead),
-                "upper_bound": [None] * len(chart_sales) + (forecast.get("upper_bound") or []),
-                "lower_bound": [None] * len(chart_sales) + (forecast.get("lower_bound") or [])
+                "forecast": [None] * len(chart_sales) + forecast_values,
+                "upper_bound": [None] * len(chart_sales) + upper_bound,
+                "lower_bound": [None] * len(chart_sales) + lower_bound
             }
         })
     except Exception as e:
@@ -1201,12 +1302,12 @@ def api_forecast_batch():
         if days_ahead not in [7, 14, 30]:
             return jsonify({"success": False, "error": "days_ahead must be 7, 14, or 30"}), 400
         
-        df = pd.read_csv(DATA_PATH)
+        user = get_current_user()
         results = []
         
         for ingredient in ingredients:
             try:
-                ingredient_df = df[df["ingredient"] == ingredient].copy()
+                ingredient_df = _get_ingredient_dataframe(ingredient, user)
                 
                 if ingredient_df.empty:
                     results.append({
@@ -1215,9 +1316,15 @@ def api_forecast_batch():
                         "error": f"No data found for {ingredient}"
                     })
                     continue
-                
-                ingredient_df["date"] = pd.to_datetime(ingredient_df["date"])
-                ingredient_df = ingredient_df.sort_values("date")
+
+                sales_df = prepare_daily_sales_series(ingredient_df)
+                if sales_df.empty:
+                    results.append({
+                        "ingredient": ingredient,
+                        "success": False,
+                        "error": f"No data found for {ingredient}"
+                    })
+                    continue
                 
                 current_stock = float(current_stocks.get(ingredient, 0))
                 forecast = forecast_demand(ingredient_df, periods=days_ahead)
@@ -1230,7 +1337,7 @@ def api_forecast_batch():
                 alerts = generate_alerts(decision)
                 
                 # Generate chart data
-                last_date = ingredient_df["date"].max()
+                last_date = sales_df["date"].max()
                 forecast_labels = [
                     (last_date + pd.Timedelta(days=i)).strftime("%Y-%m-%d")
                     for i in range(1, days_ahead + 1)
@@ -1491,21 +1598,19 @@ def import_user_sales_file():
 def ingredient_history(ingredient):
     """Get historical data for a specific ingredient"""
     try:
-        df = pd.read_csv(DATA_PATH)
-        ingredient_df = df[df["ingredient"] == ingredient].copy()
+        user = get_current_user()
+        ingredient_df = _get_ingredient_dataframe(ingredient, user)
+        sales_df = prepare_daily_sales_series(ingredient_df)
         
-        if ingredient_df.empty:
+        if sales_df.empty:
             return jsonify({"success": False, "error": f"No data found for {ingredient}"}), 404
-        
-        ingredient_df["date"] = pd.to_datetime(ingredient_df["date"])
-        ingredient_df = ingredient_df.sort_values("date")
         
         history = [
             {
                 "date": row["date"].strftime("%Y-%m-%d"),
                 "quantity": float(row["quantity_sold"])
             }
-            for _, row in ingredient_df.iterrows()
+            for _, row in sales_df.iterrows()
         ]
         
         return jsonify({"success": True, "history": history})

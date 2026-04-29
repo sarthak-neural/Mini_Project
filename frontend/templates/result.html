@@ -62,6 +62,15 @@
             </div>
           </div>
         </div>
+        {% if forecast.validation_metrics %}
+          <p style="margin: 0.8rem 0 0; font-size: 0.9rem; opacity: 0.9;">
+            Validation: last {{ forecast.validation_metrics.window_days }} days | MAE {{ forecast.validation_metrics.mae }} | RMSE {{ forecast.validation_metrics.rmse }}
+          </p>
+        {% elif forecast.selection_reason %}
+          <p style="margin: 0.8rem 0 0; font-size: 0.9rem; opacity: 0.9;">
+            {{ forecast.selection_reason }}
+          </p>
+        {% endif %}
       </div>
     </div>
 

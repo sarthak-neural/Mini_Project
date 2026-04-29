@@ -60,6 +60,15 @@ class ForecastManager {
     if (resetBtn) {
       resetBtn.addEventListener('click', () => this.resetForm());
     }
+
+    // Ensure numeric stock input remains editable on all browsers.
+    const currentStockInput = document.getElementById('current_stock');
+    if (currentStockInput) {
+      currentStockInput.disabled = false;
+      currentStockInput.readOnly = false;
+      currentStockInput.removeAttribute('disabled');
+      currentStockInput.removeAttribute('readonly');
+    }
   }
 
   /**
@@ -144,9 +153,15 @@ class ForecastManager {
       }
 
       // Get other parameters
-      const currentStock = parseFloat(formData.get('current_stock') || '0');
+      const currentStockRaw = String(formData.get('current_stock') || '0').trim().replace(',', '.');
+      const currentStock = Number(currentStockRaw);
       const leadTimeDays = parseInt(formData.get('lead_time_days') || '3');
       const serviceLevel = parseFloat(formData.get('service_level') || '0.95');
+
+      if (!Number.isFinite(currentStock) || currentStock < 0) {
+        uiService.showWarning('Current stock must be a number greater than or equal to 0');
+        return;
+      }
 
       const button = form.querySelector('button[type="submit"]');
       uiService.showLoading(true, button);
@@ -163,8 +178,8 @@ class ForecastManager {
 
         const response = await apiService.post('/api/forecast', forecastData);
 
-        if (!response || typeof response !== 'object') {
-          throw new Error('Invalid forecast response');
+        if (!response || typeof response !== 'object' || response.success !== true || !response.forecast) {
+          throw new Error(response?.error || 'Invalid forecast response');
         }
 
         this.forecastResult = response;
@@ -187,8 +202,8 @@ class ForecastManager {
 
         const response = await apiService.post('/api/forecast-batch', batchData);
 
-        if (!response || !response.results) {
-          throw new Error('Invalid batch forecast response');
+        if (!response || response.success !== true || !response.results) {
+          throw new Error(response?.error || 'Invalid batch forecast response');
         }
 
         this.forecastResult = response;
@@ -276,7 +291,7 @@ class ForecastManager {
     this.renderForecastChart(forecast);
 
     // Display table
-    this.displayForecastTable(forecast.forecast);
+    this.displayForecastTable(forecast.forecast, forecast.chart_data);
 
     // Display decision and alerts if available
     if (forecast.decision) {
@@ -468,6 +483,23 @@ class ForecastManager {
       ? Math.min(...predictions).toFixed(2)
       : 0;
 
+    const modelName = forecast.model_used || 'Model';
+    let modelDetail = '';
+
+    if (forecast.validation_metrics && typeof forecast.validation_metrics === 'object') {
+      const windowDays = forecast.validation_metrics.window_days;
+      const mae = forecast.validation_metrics.mae;
+      const rmse = forecast.validation_metrics.rmse;
+
+      const windowLabel = Number.isFinite(windowDays) ? `${windowDays}d` : windowDays;
+      const maeLabel = Number.isFinite(mae) ? mae.toFixed(2) : mae;
+      const rmseLabel = Number.isFinite(rmse) ? rmse.toFixed(2) : rmse;
+
+      modelDetail = `Validated on last ${windowLabel} | MAE ${maeLabel} | RMSE ${rmseLabel}`;
+    } else if (forecast.selection_reason) {
+      modelDetail = forecast.selection_reason;
+    }
+
     statsContainer.innerHTML = `
       <div class="stat-card">
         <h4>Average Prediction</h4>
@@ -480,6 +512,11 @@ class ForecastManager {
       <div class="stat-card">
         <h4>Minimum Expected</h4>
         <p class="stat-value">${min}</p>
+      </div>
+      <div class="stat-card">
+        <h4>Model Used</h4>
+        <p class="stat-value">${modelName}</p>
+        ${modelDetail ? `<small>${modelDetail}</small>` : ''}
       </div>
     `;
   }
@@ -608,20 +645,32 @@ class ForecastManager {
   /**
    * Display forecast as table
    */
-  displayForecastTable(forecast) {
+  displayForecastTable(forecast, chartData) {
     const tableContainer = document.getElementById('forecast-table');
     if (!tableContainer || !forecast.predictions) {
       return;
     }
 
+    const predictions = forecast.predictions || [];
+    const labels = Array.isArray(chartData?.labels) ? chartData.labels : [];
+    const forecastLabels = labels.length >= predictions.length
+      ? labels.slice(-predictions.length)
+      : [];
+
     const today = new Date();
-    const rows = forecast.predictions.map((value, index) => {
-      const date = new Date(today);
-      date.setDate(date.getDate() + index + 1);
+    const rows = predictions.map((value, index) => {
+      const label = forecastLabels[index];
+      let dateLabel = label;
+
+      if (!dateLabel) {
+        const date = new Date(today);
+        date.setDate(date.getDate() + index + 1);
+        dateLabel = date.toLocaleDateString();
+      }
 
       return `
         <tr>
-          <td>${date.toLocaleDateString()}</td>
+          <td>${dateLabel}</td>
           <td>${parseFloat(value).toFixed(2)}</td>
           ${forecast.upper_bound && forecast.upper_bound[index] ? `<td>${parseFloat(forecast.upper_bound[index]).toFixed(2)}</td>` : '<td>-</td>'}
           ${forecast.lower_bound && forecast.lower_bound[index] ? `<td>${parseFloat(forecast.lower_bound[index]).toFixed(2)}</td>` : '<td>-</td>'}

@@ -50,7 +50,7 @@
         <h2>Forecast Parameters</h2>
       </div>
       <div class="card-body">
-        <form id="forecast-form" method="POST">
+        <form id="forecast-form" method="POST" action="/result">
           <div class="form-row">
             <div class="form-group">
               <label for="forecast-ingredient"><i class="fas fa-box"></i> Ingredient</label>
@@ -75,7 +75,7 @@
           <div class="form-row">
             <div class="form-group">
               <label for="current_stock"><i class="fas fa-warehouse"></i> Current Stock (units)</label>
-              <input type="number" name="current_stock" id="current_stock" step="0.1" value="50" required />
+              <input type="text" name="current_stock" id="current_stock" inputmode="decimal" pattern="^\d+(\.\d+)?$" value="50" autocomplete="off" required />
             </div>
 
             <div class="form-group">
