@@ -544,7 +544,23 @@ async function handleSalesImportSubmit(e) {
 
         const data = await response.json();
         if (!data.success) {
-            showToast('Import failed: ' + (data.error || 'Unable to import file'), 'error', 4500);
+            let message = 'Import failed: ' + (data.error || 'Unable to import file');
+            if (data.details) {
+                const detailParts = [];
+                if (Number.isFinite(data.details.invalid_dates)) {
+                    detailParts.push(`invalid dates: ${data.details.invalid_dates}`);
+                }
+                if (Number.isFinite(data.details.invalid_quantities)) {
+                    detailParts.push(`invalid quantities: ${data.details.invalid_quantities}`);
+                }
+                if (Number.isFinite(data.details.invalid_ingredients)) {
+                    detailParts.push(`invalid items: ${data.details.invalid_ingredients}`);
+                }
+                if (detailParts.length > 0) {
+                    message += ` (${detailParts.join(', ')})`;
+                }
+            }
+            showToast(message, 'error', 4500);
             return;
         }
 

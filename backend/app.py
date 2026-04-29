@@ -1491,6 +1491,57 @@ def import_user_sales_file():
         if source_df.empty:
             return jsonify({"success": False, "error": "Uploaded file is empty"}), 400
 
+        def parse_dates(series: pd.Series) -> pd.Series:
+            parsed = pd.to_datetime(series, errors="coerce", infer_datetime_format=True)
+            parsed_count = int(parsed.notna().sum())
+
+            if parsed_count < max(1, int(len(series) * 0.5)):
+                parsed_dayfirst = pd.to_datetime(
+                    series,
+                    errors="coerce",
+                    infer_datetime_format=True,
+                    dayfirst=True
+                )
+                if int(parsed_dayfirst.notna().sum()) > parsed_count:
+                    parsed = parsed_dayfirst
+
+            numeric = pd.to_numeric(series, errors="coerce")
+            if numeric.notna().any():
+                excel_parsed = pd.to_datetime(
+                    numeric,
+                    unit="D",
+                    origin="1899-12-30",
+                    errors="coerce"
+                )
+                parsed = parsed.fillna(excel_parsed)
+
+            return parsed
+
+        def parse_quantities(series: pd.Series) -> pd.Series:
+            def normalize_value(value):
+                if value is None:
+                    return None
+                text = str(value).strip()
+                if not text:
+                    return None
+
+                if text.startswith('(') and text.endswith(')'):
+                    text = f"-{text[1:-1]}"
+
+                text = re.sub(r"[^0-9,\.\-]", "", text)
+
+                if "," in text and "." not in text:
+                    text = text.replace(",", ".")
+                else:
+                    text = text.replace(",", "")
+
+                try:
+                    return float(text)
+                except ValueError:
+                    return None
+
+            return series.apply(normalize_value)
+
         def normalize_col(col_name):
             return re.sub(r"[^a-z0-9]", "", str(col_name).strip().lower())
 
@@ -1528,19 +1579,37 @@ def import_user_sales_file():
                 "available_columns": [str(c) for c in source_df.columns]
             }), 400
 
+        ingredient_series = source_df[ingredient_col].astype(str).str.strip()
+        ingredient_series = ingredient_series.mask(
+            ingredient_series.str.lower().isin(["nan", "none", "null", ""]),
+            pd.NA
+        )
+
+        date_series = parse_dates(source_df[date_col])
+        quantity_series = parse_quantities(source_df[quantity_col])
+
         working_df = pd.DataFrame({
-            "date": pd.to_datetime(source_df[date_col], errors="coerce"),
-            "ingredient": source_df[ingredient_col].astype(str).str.strip(),
-            "quantity_sold": pd.to_numeric(source_df[quantity_col], errors="coerce")
+            "date": date_series,
+            "ingredient": ingredient_series,
+            "quantity_sold": quantity_series
         })
 
         working_df = working_df.dropna(subset=["date", "ingredient", "quantity_sold"])
         working_df = working_df[working_df["ingredient"] != ""]
 
         if working_df.empty:
+            invalid_dates = int(date_series.isna().sum())
+            invalid_quantities = int(pd.Series(quantity_series).isna().sum())
+            invalid_ingredients = int(pd.Series(ingredient_series).isna().sum())
             return jsonify({
                 "success": False,
-                "error": "No valid rows found after parsing. Ensure your file has valid dates, item names, and numeric quantities."
+                "error": "No valid rows found after parsing. Ensure your file has valid dates, item names, and numeric quantities.",
+                "details": {
+                    "total_rows": int(len(source_df)),
+                    "invalid_dates": invalid_dates,
+                    "invalid_quantities": invalid_quantities,
+                    "invalid_ingredients": invalid_ingredients
+                }
             }), 400
 
         unique_ingredients = sorted(set(working_df["ingredient"].tolist()))
