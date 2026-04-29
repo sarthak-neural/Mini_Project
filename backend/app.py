@@ -1561,8 +1561,107 @@ def import_user_sales_file():
             return None
 
         date_col = resolve_column(["date", "sale_date", "sold_date", "transaction_date", "day"])
-        ingredient_col = resolve_column(["ingredient", "item", "item_name", "product", "product_name", "name", "sku"])
+        ingredient_col = resolve_column([
+            "ingredient",
+            "ingredient_name",
+            "item",
+            "item_name",
+            "product",
+            "product_name",
+            "name",
+            "sku"
+        ])
         quantity_col = resolve_column(["quantity_sold", "quantity", "qty", "units", "units_sold", "sold", "amount"])
+
+        stock_col = resolve_column([
+            "current_stock",
+            "stock",
+            "on_hand",
+            "qty_on_hand",
+            "quantity_on_hand",
+            "inventory",
+            "balance"
+        ])
+        reorder_col = resolve_column(["reorder_point", "reorder_level", "reorder", "min_stock", "minimum_stock"])
+        unit_col = resolve_column(["unit", "unit_of_measure", "uom", "measure", "measurement"])
+
+        is_inventory_import = bool(ingredient_col and (stock_col or reorder_col) and not date_col and not quantity_col)
+        if is_inventory_import:
+            ingredient_series = source_df[ingredient_col].astype(str).str.strip()
+            ingredient_series = ingredient_series.mask(
+                ingredient_series.str.lower().isin(["nan", "none", "null", ""]),
+                pd.NA
+            )
+
+            stock_series = parse_quantities(source_df[stock_col]) if stock_col else pd.Series([None] * len(source_df))
+            reorder_series = parse_quantities(source_df[reorder_col]) if reorder_col else pd.Series([None] * len(source_df))
+            unit_series = source_df[unit_col].astype(str).str.strip() if unit_col else pd.Series([None] * len(source_df))
+            unit_series = unit_series.mask(
+                unit_series.str.lower().isin(["nan", "none", "null", ""]),
+                pd.NA
+            )
+
+            inventory_df = pd.DataFrame({
+                "ingredient": ingredient_series,
+                "current_stock": stock_series,
+                "reorder_point": reorder_series,
+                "unit_of_measure": unit_series
+            })
+
+            inventory_df = inventory_df.dropna(subset=["ingredient"])
+            inventory_df = inventory_df[inventory_df["ingredient"] != ""]
+            inventory_df = inventory_df.drop_duplicates(subset=["ingredient"], keep="last")
+
+            if inventory_df.empty:
+                invalid_ingredients = int(pd.Series(ingredient_series).isna().sum())
+                return jsonify({
+                    "success": False,
+                    "error": "No valid inventory rows found after parsing. Ensure your file has item names and stock values.",
+                    "details": {
+                        "total_rows": int(len(source_df)),
+                        "invalid_ingredients": invalid_ingredients
+                    }
+                }), 400
+
+            existing_items = {
+                (item.ingredient or "").strip(): item
+                for item in IngredientMaster.query.filter_by(user_id=user.id).all()
+            }
+
+            items_added = 0
+            items_updated = 0
+
+            for row in inventory_df.itertuples(index=False):
+                ingredient_value = str(row.ingredient).strip()
+                if not ingredient_value:
+                    continue
+
+                item = existing_items.get(ingredient_value)
+                if not item:
+                    item = IngredientMaster(user_id=user.id, ingredient=ingredient_value)
+                    db.session.add(item)
+                    existing_items[ingredient_value] = item
+                    items_added += 1
+                else:
+                    items_updated += 1
+
+                if pd.notna(row.current_stock):
+                    item.current_stock = float(row.current_stock)
+                if pd.notna(row.reorder_point):
+                    item.reorder_point = float(row.reorder_point)
+                if isinstance(row.unit_of_measure, str) and row.unit_of_measure.strip():
+                    item.unit_of_measure = row.unit_of_measure.strip()
+
+            db.session.commit()
+
+            total_items = items_added + items_updated
+            return jsonify({
+                "success": True,
+                "import_type": "inventory",
+                "items_added": items_added,
+                "items_updated": items_updated,
+                "items_total": total_items
+            })
 
         missing = []
         if not date_col:

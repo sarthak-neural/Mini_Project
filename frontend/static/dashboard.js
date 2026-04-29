@@ -564,11 +564,23 @@ async function handleSalesImportSubmit(e) {
             return;
         }
 
-        showToast(
-            `Imported ${data.rows_imported} sales rows. Added ${data.ingredients_added} new products.`,
-            'success',
-            4500
-        );
+        if (data.import_type === 'inventory') {
+            const added = Number.isFinite(data.items_added) ? data.items_added : 0;
+            const updated = Number.isFinite(data.items_updated) ? data.items_updated : 0;
+            const total = Number.isFinite(data.items_total) ? data.items_total : (added + updated);
+
+            showToast(
+                `Imported ${total} inventory items. Added ${added}, updated ${updated}.`,
+                'success',
+                4500
+            );
+        } else {
+            showToast(
+                `Imported ${data.rows_imported} sales rows. Added ${data.ingredients_added} new products.`,
+                'success',
+                4500
+            );
+        }
         closeSalesImportModal();
         await loadIngredients();
         await loadDashboard();
