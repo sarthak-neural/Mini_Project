@@ -117,6 +117,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadIngredients();
     setDefaultDate();
     initSearchableSelects();
+    loadLocationInfo();
     
     // Attach form event listeners after DOM is ready
     const addSaleForm = document.getElementById('addSaleForm');
@@ -153,6 +154,38 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 });
+
+// Load location and units for display
+async function loadLocationInfo() {
+    const locationInfo = document.getElementById('location-info');
+    const unitsInfo = document.getElementById('units-info');
+    if (!locationInfo && !unitsInfo) return;
+
+    try {
+        const response = await fetch('/api/user/location');
+        const data = await response.json();
+
+        if (!data.success) {
+            return;
+        }
+
+        const location = data.location || {};
+        const units = data.units || {};
+        const country = location.country || 'US';
+        const city = location.city || '';
+        const locationLabel = city ? `${city}, ${country}` : country;
+
+        if (locationInfo) {
+            locationInfo.innerHTML = `<i class="fas fa-map-marker-alt"></i> ${locationLabel}`;
+        }
+
+        if (unitsInfo) {
+            unitsInfo.textContent = `Units: ${units.weight || '-'} | ${units.volume || '-'} | ${units.currency || '-'}`;
+        }
+    } catch (error) {
+        console.error('Error loading location info:', error);
+    }
+}
 
 // Load dashboard statistics
 async function loadDashboard() {

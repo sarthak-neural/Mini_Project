@@ -93,8 +93,11 @@
           </div>
 
           <div class="form-actions">
-            <button type="submit" class="btn btn-primary">
+            <button type="submit" class="btn btn-primary" data-submit-mode="ajax">
               <i class="fas fa-chart-line"></i> Generate Forecast
+            </button>
+            <button type="submit" class="btn btn-secondary" data-submit-mode="page">
+              <i class="fas fa-file-alt"></i> View Full Report
             </button>
             <button type="button" class="btn btn-secondary" id="reset-forecast-btn">
               <i class="fas fa-undo"></i> Reset

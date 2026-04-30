@@ -119,6 +119,11 @@ class ForecastManager {
    * Handle forecast form submission
    */
   async handleForecastSubmit(event) {
+    const submitter = event.submitter;
+    if (submitter && submitter.dataset && submitter.dataset.submitMode === 'page') {
+      return;
+    }
+
     event.preventDefault();
 
     try {
@@ -484,6 +489,7 @@ class ForecastManager {
       : 0;
 
     const modelName = forecast.model_used || 'Model';
+    const confidence = Number.isFinite(forecast.confidence) ? `${forecast.confidence}%` : null;
     let modelDetail = '';
 
     if (forecast.validation_metrics && typeof forecast.validation_metrics === 'object') {
@@ -518,6 +524,12 @@ class ForecastManager {
         <p class="stat-value">${modelName}</p>
         ${modelDetail ? `<small>${modelDetail}</small>` : ''}
       </div>
+      ${confidence ? `
+      <div class="stat-card">
+        <h4>Confidence</h4>
+        <p class="stat-value">${confidence}</p>
+      </div>
+      ` : ''}
     `;
   }
 

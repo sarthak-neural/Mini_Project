@@ -1,0 +1,76 @@
+# Docker development compose configuration
+# Use with: docker-compose -f docker-compose.dev.yml up
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: restaurant_ai_db_dev
+    environment:
+      POSTGRES_USER: dev_user
+      POSTGRES_PASSWORD: dev_password
+      POSTGRES_DB: restaurant_ai_dev
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+      - ./backend/database/setup_postgresql.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - restaurant_network_dev
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: restaurant_ai_cache_dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_dev:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - restaurant_network_dev
+
+  # Application (development with hot reload)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: restaurant_ai_app_dev
+    environment:
+      FLASK_ENV: development
+      DEBUG: 'True'
+      DATABASE_URL: postgresql://dev_user:dev_password@postgres:5432/restaurant_ai_dev
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: dev-secret-key-change-in-production
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - /app/__pycache__
+    command: flask run --host=0.0.0.0
+    networks:
+      - restaurant_network_dev
+
+volumes:
+  postgres_data_dev:
+  redis_data_dev:
+
+networks:
+  restaurant_network_dev:

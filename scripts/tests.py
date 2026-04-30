@@ -10,6 +10,8 @@ import sys
 from datetime import datetime, timedelta
 import tempfile
 
+os.environ.setdefault('FLASK_ENV', 'testing')
+
 # Add current directory to path to ensure imports work
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
@@ -35,7 +37,7 @@ Forecast = app_module.Forecast
 from models import IngredientMaster
 
 
-class RestaurantInventoryTestCase(unittest.TestCase):
+class TestRestaurantInventoryCase(unittest.TestCase):
     """Base test case with setup and teardown"""
 
     def setUp(self):
@@ -86,7 +88,7 @@ class RestaurantInventoryTestCase(unittest.TestCase):
         return self.client.get('/logout', follow_redirects=True)
 
 
-class AuthenticationTests(RestaurantInventoryTestCase):
+class TestAuthentication(TestRestaurantInventoryCase):
     """Test authentication and user creation"""
     
     def test_landing_page(self):
@@ -131,7 +133,7 @@ class AuthenticationTests(RestaurantInventoryTestCase):
         self.assertEqual(response.status_code, 302)  # Redirect to login
 
 
-class UserProfileTests(RestaurantInventoryTestCase):
+class TestUserProfile(TestRestaurantInventoryCase):
     """Test user profile and settings"""
     
     def setUp(self):
@@ -207,7 +209,7 @@ class UserProfileTests(RestaurantInventoryTestCase):
         self.assertFalse(data['success'])
 
 
-class PasswordRecoveryTests(RestaurantInventoryTestCase):
+class TestPasswordRecovery(TestRestaurantInventoryCase):
     """Test password recovery functionality"""
     
     def setUp(self):
@@ -252,7 +254,7 @@ class PasswordRecoveryTests(RestaurantInventoryTestCase):
         self.assertFalse(data['success'])
 
 
-class DashboardTests(RestaurantInventoryTestCase):
+class TestDashboard(TestRestaurantInventoryCase):
     """Test dashboard and statistics"""
     
     def setUp(self):
@@ -285,7 +287,7 @@ class DashboardTests(RestaurantInventoryTestCase):
         self.assertIn('ingredients', data)
 
 
-class SalesRecordTests(RestaurantInventoryTestCase):
+class TestSalesRecord(TestRestaurantInventoryCase):
     """Test sales record functionality"""
     
     def setUp(self):
@@ -329,7 +331,7 @@ class SalesRecordTests(RestaurantInventoryTestCase):
         os.unlink(f.name)
 
 
-class AlertTests(RestaurantInventoryTestCase):
+class TestAlerts(TestRestaurantInventoryCase):
     """Test alert preferences and notifications"""
     
     def setUp(self):
@@ -387,7 +389,7 @@ class AlertTests(RestaurantInventoryTestCase):
         self.assertTrue(data['success'])
 
 
-class LocationTests(RestaurantInventoryTestCase):
+class TestLocation(TestRestaurantInventoryCase):
     """Test location and unit settings"""
     
     def setUp(self):
@@ -438,7 +440,7 @@ class LocationTests(RestaurantInventoryTestCase):
         self.assertAlmostEqual(data['result'], 0.453592, places=5)
 
 
-class ForecastTests(RestaurantInventoryTestCase):
+class TestForecast(TestRestaurantInventoryCase):
     """Test forecast functionality"""
     
     def setUp(self):
@@ -480,7 +482,7 @@ class ForecastTests(RestaurantInventoryTestCase):
         self.assertTrue(data['success'])
 
 
-class ErrorHandlingTests(RestaurantInventoryTestCase):
+class TestErrorHandling(TestRestaurantInventoryCase):
     """Test error handling"""
     
     def test_404_error(self):
@@ -498,7 +500,7 @@ class ErrorHandlingTests(RestaurantInventoryTestCase):
         self.assertIn(response.status_code, [400, 422, 500])
 
 
-class PerformanceTests(RestaurantInventoryTestCase):
+class TestPerformance(TestRestaurantInventoryCase):
     """Test performance and optimization"""
     
     def setUp(self):
@@ -518,7 +520,7 @@ class PerformanceTests(RestaurantInventoryTestCase):
         self.assertEqual(response.status_code, 200)
 
 
-class SecurityTests(RestaurantInventoryTestCase):
+class TestSecurity(TestRestaurantInventoryCase):
     """Test security features"""
     
     def test_password_hashing(self):

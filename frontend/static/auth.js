@@ -4,7 +4,7 @@
 const REMEMBER_ME_KEY = 'rememberMeEmail';
 
 function initRememberMe() {
-    const loginForm = document.getElementById('loginForm');
+    const loginForm = document.getElementById('emailLoginForm');
     const emailInput = document.getElementById('email');
     const rememberMeCheckbox = document.getElementById('rememberMe');
     
@@ -67,7 +67,7 @@ if (signupForm) {
 }
 
 // Form validation for login
-const loginForm = document.getElementById('loginForm');
+const loginForm = document.getElementById('emailLoginForm');
 if (loginForm) {
     loginForm.addEventListener('submit', function(e) {
         const email = document.getElementById('email').value;
@@ -81,9 +81,11 @@ if (loginForm) {
     });
 }
 
-// Add loading state to buttons
-document.querySelectorAll('form').forEach(form => {
-    form.addEventListener('submit', function(e) {
+// Add loading state to non-AJAX forms
+['signupForm', 'emailLoginForm'].forEach(formId => {
+    const form = document.getElementById(formId);
+    if (!form) return;
+    form.addEventListener('submit', function() {
         const submitBtn = this.querySelector('button[type="submit"]');
         if (submitBtn) {
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';

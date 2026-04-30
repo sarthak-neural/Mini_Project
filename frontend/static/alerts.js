@@ -1,5 +1,27 @@
 // Alert Settings Management
 
+function notifyAlert(message, type = 'info') {
+    if (typeof showToast === 'function') {
+        showToast(message, type, 3500);
+        return;
+    }
+    alert(message);
+}
+
+function setAlertButtonLoading(button, isLoading, label = 'Saving...') {
+    if (!button) return;
+    if (isLoading) {
+        button.disabled = true;
+        button.dataset.originalText = button.innerHTML;
+        button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${label}`;
+        button.style.opacity = '0.7';
+    } else {
+        button.disabled = false;
+        button.innerHTML = button.dataset.originalText || button.innerHTML;
+        button.style.opacity = '1';
+    }
+}
+
 function showAlertSettingsModal() {
     document.getElementById('alertSettingsModal').style.display = 'flex';
     loadAlertPreferences();
@@ -17,11 +39,24 @@ async function loadAlertPreferences() {
         const data = await response.json();
 
         if (data.success) {
-            const prefs = data.preferences;
-            document.getElementById('email-enabled').checked = prefs.email_enabled || false;
-            document.getElementById('sms-enabled').checked = prefs.sms_enabled || false;
-            document.getElementById('alert-phone').value = prefs.phone_number || '';
-            document.getElementById('alert-threshold').value = prefs.alert_threshold_percentage || 20;
+            const prefs = data.preferences || {};
+            const flat = data.preferences_flat || {};
+            const emailEnabled = prefs.email?.enabled ?? prefs.email_enabled ?? false;
+            const smsEnabled = prefs.sms?.enabled ?? prefs.sms_enabled ?? false;
+            const emailAddress = prefs.email?.email_address ?? prefs.email_address ?? flat.email_address ?? '';
+            const phoneNumber = prefs.sms?.phone_number ?? prefs.phone_number ?? flat.phone_number ?? '';
+            const threshold =
+                prefs.threshold_percentage ??
+                prefs.alert_threshold_percentage ??
+                flat.threshold_percentage ??
+                flat.alert_threshold_percentage ??
+                20;
+
+            document.getElementById('email-enabled').checked = emailEnabled;
+            document.getElementById('sms-enabled').checked = smsEnabled;
+            document.getElementById('alert-email').value = emailAddress;
+            document.getElementById('alert-phone').value = phoneNumber;
+            document.getElementById('alert-threshold').value = threshold;
             
             // Check if services are available
             if (!data.alerts_available.email) {
@@ -33,6 +68,7 @@ async function loadAlertPreferences() {
         }
     } catch (error) {
         console.error('Error loading alert preferences:', error);
+        notifyAlert('Error loading alert preferences: ' + error.message, 'error');
     }
 }
 
@@ -41,12 +77,15 @@ document.getElementById('alertSettingsForm').addEventListener('submit', async fu
     e.preventDefault();
 
     const preferences = {
-        email: document.getElementById('alert-email').value,
+        email_address: document.getElementById('alert-email').value,
         email_enabled: document.getElementById('email-enabled').checked,
         sms_enabled: document.getElementById('sms-enabled').checked,
         phone_number: document.getElementById('alert-phone').value,
-        alert_threshold_percentage: parseInt(document.getElementById('alert-threshold').value)
+        threshold_percentage: parseInt(document.getElementById('alert-threshold').value)
     };
+
+    const submitBtn = this.querySelector('button[type="submit"]');
+    setAlertButtonLoading(submitBtn, true, 'Saving...');
 
     try {
         const response = await fetch('/api/alerts/preferences', {
@@ -60,13 +99,15 @@ document.getElementById('alertSettingsForm').addEventListener('submit', async fu
         const data = await response.json();
 
         if (data.success) {
-            alert('Alert preferences saved successfully!');
+            notifyAlert('Alert preferences saved successfully!', 'success');
             closeAlertSettingsModal();
         } else {
-            alert('Error saving preferences: ' + data.error);
+            notifyAlert('Error saving preferences: ' + data.error, 'error');
         }
     } catch (error) {
-        alert('Error: ' + error.message);
+        notifyAlert('Error: ' + error.message, 'error');
+    } finally {
+        setAlertButtonLoading(submitBtn, false);
     }
 });
 
@@ -74,7 +115,7 @@ document.getElementById('alertSettingsForm').addEventListener('submit', async fu
 async function testEmailAlert() {
     const email = document.getElementById('alert-email').value;
     if (!email) {
-        alert('Please enter an email address first');
+        notifyAlert('Please enter an email address first', 'warning');
         return;
     }
 
@@ -90,12 +131,12 @@ async function testEmailAlert() {
         const data = await response.json();
 
         if (data.success) {
-            alert('✓ Test email sent successfully! Check your inbox.');
+            notifyAlert('Test email sent successfully! Check your inbox.', 'success');
         } else {
-            alert('✗ Failed to send test email: ' + data.error);
+            notifyAlert('Failed to send test email: ' + data.error, 'error');
         }
     } catch (error) {
-        alert('Error: ' + error.message);
+        notifyAlert('Error: ' + error.message, 'error');
     }
 }
 
@@ -103,7 +144,7 @@ async function testEmailAlert() {
 async function testSmsAlert() {
     const phone = document.getElementById('alert-phone').value;
     if (!phone) {
-        alert('Please enter a phone number first');
+        notifyAlert('Please enter a phone number first', 'warning');
         return;
     }
 
@@ -119,12 +160,12 @@ async function testSmsAlert() {
         const data = await response.json();
 
         if (data.success) {
-            alert('✓ Test SMS sent successfully! Check your phone.');
+            notifyAlert('Test SMS sent successfully! Check your phone.', 'success');
         } else {
-            alert('✗ Failed to send test SMS: ' + data.error);
+            notifyAlert('Failed to send test SMS: ' + data.error, 'error');
         }
     } catch (error) {
-        alert('Error: ' + error.message);
+        notifyAlert('Error: ' + error.message, 'error');
     }
 }
 

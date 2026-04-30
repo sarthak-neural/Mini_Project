@@ -6,8 +6,22 @@ document.addEventListener('DOMContentLoaded', function() {
     loadNotificationSettings();
 });
 
+function setFormButtonLoading(form, isLoading, label = 'Saving...') {
+    if (!form) return;
+    const button = form.querySelector('button[type="submit"]');
+    if (!button) return;
+    if (isLoading) {
+        button.disabled = true;
+        button.dataset.originalText = button.innerHTML;
+        button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${label}`;
+    } else {
+        button.disabled = false;
+        button.innerHTML = button.dataset.originalText || button.innerHTML;
+    }
+}
+
 // Switch between settings panels
-function switchPanel(panelName) {
+function switchPanel(panelName, evt) {
     // Hide all panels
     document.querySelectorAll('.settings-panel').forEach(panel => {
         panel.classList.remove('active');
@@ -25,7 +39,10 @@ function switchPanel(panelName) {
     }
 
     // Mark menu link as active
-    event.target.classList.add('active');
+    const target = evt?.target || document.querySelector(`.settings-menu-link[href="#${panelName}"]`);
+    if (target) {
+        target.classList.add('active');
+    }
 }
 
 // Load user profile information
@@ -79,12 +96,26 @@ async function loadNotificationSettings() {
         const data = await response.json();
 
         if (data.success) {
-            const prefs = data.preferences;
-            document.getElementById('alert-email').value = prefs.email?.email_address || '';
-            document.getElementById('email-alerts').checked = prefs.email?.enabled || false;
-            document.getElementById('alert-phone').value = prefs.sms?.phone_number || '';
-            document.getElementById('sms-alerts').checked = prefs.sms?.enabled || false;
-            document.getElementById('alert-threshold').value = prefs.threshold_percentage || 20;
+            const prefs = data.preferences || {};
+            const flat = data.preferences_flat || {};
+            document.getElementById('alert-email').value = prefs.email?.email_address || flat.email_address || '';
+            document.getElementById('email-alerts').checked = prefs.email?.enabled ?? flat.email_enabled ?? false;
+            document.getElementById('alert-phone').value = prefs.sms?.phone_number || flat.phone_number || '';
+            document.getElementById('sms-alerts').checked = prefs.sms?.enabled ?? flat.sms_enabled ?? false;
+            document.getElementById('alert-threshold').value =
+                prefs.threshold_percentage ??
+                flat.threshold_percentage ??
+                flat.alert_threshold_percentage ??
+                20;
+
+            if (data.alerts_available) {
+                if (!data.alerts_available.email) {
+                    document.getElementById('email-alerts').disabled = true;
+                }
+                if (!data.alerts_available.sms) {
+                    document.getElementById('sms-alerts').disabled = true;
+                }
+            }
         }
     } catch (error) {
         console.error('Error loading notification settings:', error);
@@ -127,6 +158,7 @@ document.getElementById('profile-form').addEventListener('submit', async functio
     };
 
     try {
+        setFormButtonLoading(this, true);
         const response = await fetch('/api/user/profile', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -147,6 +179,8 @@ document.getElementById('profile-form').addEventListener('submit', async functio
     } catch (error) {
         const alertDiv = document.getElementById('profile-alert');
         alertDiv.innerHTML = '<div class="alert alert-error"><i class="fas fa-times-circle"></i> Error: ' + error.message + '</div>';
+    } finally {
+        setFormButtonLoading(this, false);
     }
 });
 
@@ -160,6 +194,7 @@ document.getElementById('location-form').addEventListener('submit', async functi
     };
 
     try {
+        setFormButtonLoading(this, true);
         const response = await fetch('/api/location/country', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -180,6 +215,8 @@ document.getElementById('location-form').addEventListener('submit', async functi
     } catch (error) {
         const alertDiv = document.getElementById('location-alert');
         alertDiv.innerHTML = '<div class="alert alert-error"><i class="fas fa-times-circle"></i> Error: ' + error.message + '</div>';
+    } finally {
+        setFormButtonLoading(this, false);
     }
 });
 
@@ -196,6 +233,7 @@ document.getElementById('notifications-form').addEventListener('submit', async f
     };
 
     try {
+        setFormButtonLoading(this, true);
         const response = await fetch('/api/alerts/preferences', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -216,6 +254,8 @@ document.getElementById('notifications-form').addEventListener('submit', async f
     } catch (error) {
         const alertDiv = document.getElementById('notifications-alert');
         alertDiv.innerHTML = '<div class="alert alert-error"><i class="fas fa-times-circle"></i> Error: ' + error.message + '</div>';
+    } finally {
+        setFormButtonLoading(this, false);
     }
 });
 
@@ -245,6 +285,7 @@ document.getElementById('password-form').addEventListener('submit', async functi
     }
 
     try {
+        setFormButtonLoading(this, true, 'Updating...');
         const response = await fetch('/api/user/change-password', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -269,6 +310,8 @@ document.getElementById('password-form').addEventListener('submit', async functi
     } catch (error) {
         const alertDiv = document.getElementById('security-alert');
         alertDiv.innerHTML = '<div class="alert alert-error"><i class="fas fa-times-circle"></i> Error: ' + error.message + '</div>';
+    } finally {
+        setFormButtonLoading(this, false, 'Update Password');
     }
 });
 
@@ -286,8 +329,7 @@ async function testAlertNotification() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                email: email,
-                type: 'test'
+                channel: 'email'
             })
         });
 

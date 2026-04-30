@@ -27,11 +27,15 @@ jobs:
           pip install flake8 black isort
       
       - name: Run flake8
-        run: flake8 app.py models.py alerts.py tests.py --max-line-length=120 --exclude=__pycache__,migrations
+        run: flake8 app.py models.py alerts.py tests.py backend scripts --max-line-length=120 --exclude=__pycache__,migrations
         continue-on-error: true
       
       - name: Check code formatting with black
         run: black --check . --exclude '/(\.git|\.venv|__pycache__|\.pytest_cache|node_modules)/'
+        continue-on-error: true
+
+      - name: Check import sorting with isort
+        run: isort --check-only . --skip .venv --skip __pycache__ --skip .pytest_cache
         continue-on-error: true
 
   # Security Scanning
@@ -95,18 +99,52 @@ jobs:
           DATABASE_URL: postgresql://test_user:test_pass@localhost:5432/test_db
           FLASK_ENV: testing
         run: |
-          pytest tests.py -v --cov=. --cov-report=xml --cov-report=html
+          pytest -v --cov=. --cov-report=xml --cov-report=html
       
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
           files: ./coverage.xml
 
+  # Frontend Tests (JavaScript/Jest)
+  test-frontend:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+      
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+      
+      - name: Run Jest tests
+        run: |
+          cd frontend
+          npm test -- --coverage --watchAll=false
+        continue-on-error: true
+      
+      - name: Upload frontend coverage
+        uses: codecov/codecov-action@v3
+        with:
+          flags: frontend
+          fail_ci_if_error: false
+
   # Build Docker Image
   build:
     name: Build Docker Image
     runs-on: ubuntu-latest
-    needs: [lint, test]
+    needs: [lint, test, test-frontend]
     if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v3

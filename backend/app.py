@@ -1780,9 +1780,36 @@ def ingredient_history(ingredient):
 def get_country_from_coordinates():
     """Get country code from latitude and longitude (public endpoint)"""
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
+        manual_country = (data.get("country") or '').strip().upper() or None
+        manual_city = (data.get("city") or '').strip()
         latitude = data.get("latitude")
         longitude = data.get("longitude")
+
+        if manual_country:
+            detected_country = manual_country
+            user_email = session.get('user')
+            if user_email:
+                user = User.query.filter_by(email=user_email).first()
+                if user:
+                    if not user.location:
+                        user.location = Location(user_id=user.id)
+                    user.location.country = detected_country
+                    user.location.city = manual_city
+                    user.location.set_units(UNIT_STANDARDS.get(detected_country, UNIT_STANDARDS['US']))
+                    db.session.commit()
+                    session['location'] = user.location.to_dict()
+                    session['units'] = user.location.get_units()
+
+            return jsonify({
+                "success": True,
+                "country": detected_country,
+                "units": UNIT_STANDARDS.get(detected_country, UNIT_STANDARDS['US']),
+                "location": {
+                    "country": detected_country,
+                    "city": manual_city
+                }
+            })
         
         if latitude is None or longitude is None:
             return jsonify({"success": False, "error": "Latitude and longitude required"}), 400
@@ -1956,19 +1983,26 @@ def get_alert_preferences():
         user_email = session.get('user')
         user = User.query.filter_by(email=user_email).first()
         if user:
-            prefs = {}
-            for pref in user.alert_preferences:
-                prefs[pref.ingredient] = {
-                    'min_stock': pref.min_stock_level,
-                    'max_stock': pref.max_stock_level,
-                    'enabled': pref.enabled
-                }
+            prefs = user.alert_preferences
+            if not prefs:
+                prefs = AlertPreference(user_id=user.id)
+                db.session.add(prefs)
+                db.session.commit()
             return jsonify({
                 "success": True,
-                "preferences": prefs,
+                "preferences": prefs.to_dict(),
+                "preferences_flat": {
+                    "email_enabled": prefs.email_enabled,
+                    "sms_enabled": prefs.sms_enabled,
+                    "email_address": prefs.email_address,
+                    "phone_number": prefs.phone_number,
+                    "alert_threshold_percentage": prefs.threshold_percentage,
+                    "threshold_percentage": prefs.threshold_percentage,
+                    "reorder_point_auto_calculate": prefs.reorder_point_auto_calculate
+                },
                 "alerts_available": {
-                    "email": alert_manager.mail is not None,
-                    "sms": alert_manager.twilio_client is not None
+                    "email": bool(getattr(alert_manager, 'mail', None)),
+                    "sms": bool(getattr(alert_manager, 'twilio_client', None))
                 }
             })
         return jsonify({"success": False, "error": "User not found"}), 404
@@ -1982,42 +2016,64 @@ def update_alert_preferences():
     try:
         user_email = session.get('user')
         user = User.query.filter_by(email=user_email).first()
-        data = request.get_json()
+        data = request.get_json() or {}
         
         if user:
-            # Clear existing preferences
-            AlertPreference.query.filter_by(user_id=user.id).delete()
-            
-            # Add new preferences from request
-            ingredients = data.get('ingredients', [])
-            for ing_data in ingredients:
-                pref = AlertPreference(
-                    user_id=user.id,
-                    ingredient=ing_data.get('ingredient'),
-                    min_stock_level=float(ing_data.get('min_stock', 0)),
-                    max_stock_level=float(ing_data.get('max_stock', 1000)),
-                    enabled=ing_data.get('enabled', True)
+            prefs = user.alert_preferences
+            if not prefs:
+                prefs = AlertPreference(user_id=user.id)
+                db.session.add(prefs)
+
+            def _coerce_bool(value, default=False):
+                if value is None:
+                    return default
+                if isinstance(value, bool):
+                    return value
+                if isinstance(value, str):
+                    return value.strip().lower() in {'true', '1', 'yes', 'on'}
+                return bool(value)
+
+            email_address = data.get('email_address') or data.get('email')
+            phone_number = data.get('phone_number') or data.get('phone')
+            threshold_value = (
+                data.get('threshold_percentage')
+                if data.get('threshold_percentage') is not None
+                else data.get('alert_threshold_percentage')
+            )
+
+            prefs.email_enabled = _coerce_bool(data.get('email_enabled'), prefs.email_enabled)
+            prefs.sms_enabled = _coerce_bool(data.get('sms_enabled'), prefs.sms_enabled)
+
+            if email_address is not None:
+                prefs.email_address = email_address.strip() or None
+            if phone_number is not None:
+                prefs.phone_number = phone_number.strip() or None
+            if threshold_value is not None:
+                prefs.threshold_percentage = int(float(threshold_value))
+
+            if data.get('reorder_point_auto_calculate') is not None:
+                prefs.reorder_point_auto_calculate = _coerce_bool(
+                    data.get('reorder_point_auto_calculate'),
+                    prefs.reorder_point_auto_calculate
                 )
-                db.session.add(pref)
-            
-            # Update email if provided
-            if data.get('email'):
-                user.email = data.get('email')
-            
+            if data.get('contact_name') is not None:
+                prefs.contact_name = (data.get('contact_name') or '').strip() or None
+
             db.session.commit()
-            
-            prefs = {}
-            for pref in user.alert_preferences:
-                prefs[pref.ingredient] = {
-                    'min_stock': pref.min_stock_level,
-                    'max_stock': pref.max_stock_level,
-                    'enabled': pref.enabled
-                }
-            
+
             return jsonify({
                 "success": True,
                 "message": "Alert preferences updated successfully",
-                "preferences": prefs
+                "preferences": prefs.to_dict(),
+                "preferences_flat": {
+                    "email_enabled": prefs.email_enabled,
+                    "sms_enabled": prefs.sms_enabled,
+                    "email_address": prefs.email_address,
+                    "phone_number": prefs.phone_number,
+                    "alert_threshold_percentage": prefs.threshold_percentage,
+                    "threshold_percentage": prefs.threshold_percentage,
+                    "reorder_point_auto_calculate": prefs.reorder_point_auto_calculate
+                }
             })
         return jsonify({"success": False, "error": "User not found"}), 404
     except Exception as e:
@@ -2030,16 +2086,22 @@ def test_alert():
     try:
         user_email = session.get('user')
         user = User.query.filter_by(email=user_email).first()
-        data = request.get_json()
-        channel = data.get('channel', 'email')  # 'email' or 'sms'
+        data = request.get_json() or {}
+        channel = data.get('channel') or data.get('method') or data.get('type') or 'email'
         
         if user:
+            prefs = user.alert_preferences
+            email_contact = (prefs.email_address if prefs else None) or user.email
+            phone_contact = (prefs.phone_number if prefs else None) or getattr(user, 'phone_number', None)
+
             if channel == 'email':
-                contact = user.email
-                success = alert_manager.test_alert(contact, 'email')
+                if not email_contact:
+                    return jsonify({"success": False, "error": "Email address not configured"}), 400
+                success = alert_manager.test_alert(email_contact, 'email')
             elif channel == 'sms':
-                contact = user.phone_number if hasattr(user, 'phone_number') else None
-                success = alert_manager.test_alert(contact, 'sms')
+                if not phone_contact:
+                    return jsonify({"success": False, "error": "Phone number not configured"}), 400
+                success = alert_manager.test_alert(phone_contact, 'sms')
             else:
                 return jsonify({"success": False, "error": "Invalid channel"}), 400
             
@@ -2065,42 +2127,53 @@ def check_stock_and_alert():
     try:
         user_email = session.get('user')
         user = User.query.filter_by(email=user_email).first()
-        data = request.get_json()
+        data = request.get_json() or {}
         ingredient = data.get('ingredient')
         current_stock = float(data.get('current_stock', 0))
         reorder_point = float(data.get('reorder_point', 0))
         
         if user:
-            alert_prefs = {}
-            for pref in user.alert_preferences:
-                if pref.ingredient == ingredient:
-                    alert_prefs = {
-                        'min_stock': pref.min_stock_level,
-                        'enabled': pref.enabled
-                    }
-                    break
+            prefs = user.alert_preferences
+            if not prefs:
+                prefs = AlertPreference(user_id=user.id)
+                db.session.add(prefs)
+                db.session.commit()
+
+            threshold_pct = prefs.threshold_percentage or 0
+            trigger_point = reorder_point
+            if threshold_pct > 0 and reorder_point > 0:
+                trigger_point = reorder_point * (threshold_pct / 100.0)
             
             # Check if alert should be sent
-            if current_stock < reorder_point:
+            if current_stock <= trigger_point:
                 alerts_sent = alert_manager.send_low_stock_alert(
-                    {'email': user.email, 'name': user.get_full_name()},
+                    {
+                        'email': prefs.email_address or user.email,
+                        'name': user.get_full_name()
+                    },
                     ingredient,
                     current_stock,
                     reorder_point,
-                    alert_prefs
+                    {
+                        'email_enabled': prefs.email_enabled,
+                        'sms_enabled': prefs.sms_enabled,
+                        'phone_number': prefs.phone_number
+                    }
                 )
                 
                 return jsonify({
                     "success": True,
                     "alert_triggered": True,
                     "alerts_sent": alerts_sent,
-                    "message": f"Low stock alert sent via {', '.join(alerts_sent) if alerts_sent else 'no configured channels'}"
+                    "message": f"Low stock alert sent via {', '.join(alerts_sent) if alerts_sent else 'no configured channels'}",
+                    "trigger_point": round(trigger_point, 2)
                 })
             else:
                 return jsonify({
                     "success": True,
                     "alert_triggered": False,
-                    "message": "Stock level is sufficient"
+                    "message": "Stock level is sufficient",
+                    "trigger_point": round(trigger_point, 2)
                 })
         
         return jsonify({"success": False, "error": "User not found"}), 404
