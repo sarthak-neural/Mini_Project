@@ -30,6 +30,7 @@ from model import (
     calculate_confidence_intervals,
     prepare_daily_sales_series,
 )
+from alerts import init_alerts
 
 # Load environment variables
 load_dotenv()
@@ -41,6 +42,9 @@ from models import db, User, Location, SalesRecord, Forecast, AlertPreference, A
 # Create production-safe app instance (uses environment to determine config)
 _config = os.getenv('FLASK_ENV', 'development')
 app = create_app(_config)
+
+# Initialize alert manager once app is created.
+alert_manager = init_alerts(app)
 
 # Data path for CSV files
 DATA_PATH = os.path.join(os.path.dirname(__file__), 'data', 'sales_data.csv')
