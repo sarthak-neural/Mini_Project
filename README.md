@@ -764,7 +764,7 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file for
 
 <div align="center">
 
-**Made with ❤️ for Restaurant Operators**
+**Made with ❤️ for Hotel and Restaurant Operators**
 
 [⬆ Back to Top](#restaurant-inventory-ai---smart-demand-forecasting--inventory-optimization)
 
